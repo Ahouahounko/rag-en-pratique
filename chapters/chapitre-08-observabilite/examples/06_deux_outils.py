@@ -1,30 +1,48 @@
-# --- Approche "campagne de mesure" (style RAGAS) -------------
-# On evalue un jeu entier et on obtient des scores continus,
-# a lire ensemble comme au tableau des configurations.
+"""Comparer campagne de mesure et test de non-régression."""
 
-resultats = evaluer(
-    jeu=jeu_de_reference,
-    metriques=[fidelite, pertinence_reponse,
-               pertinence_contexte, rappel_contexte],
-    modele_juge=JUGE,            # a CONSIGNER avec les resultats
-)
-print(resultats.moyennes())
-# {"fidelite": 0.82, "pertinence_reponse": 0.79, ...}
+from __future__ import annotations
+
+import statistics
+from collections.abc import Callable
+from dataclasses import dataclass
 
 
-# --- Approche "test de non-regression" (style DeepEval) ------
-# Chaque cas devient une assertion. Le test ECHOUE sous le seuil,
-# et l'integration continue bloque le deploiement.
+@dataclass(frozen=True)
+class CasDeTest:
+    question: str
+    reponse: str
+    contexte: str
 
-def test_pas_de_regression_fidelite():
-    cas = CasDeTest(
-        question="Quelle est la duree de la garantie ?",
-        reponse=systeme.repondre(question),
-        contexte=systeme.dernier_contexte(),
-    )
-    metrique = Fidelite(seuil=0.80, modele_juge=JUGE)
 
-    assert metrique.mesurer(cas) >= metrique.seuil, (
-        f"Fidelite tombee a {metrique.score:.2f}. "
-        f"Justification du juge : {metrique.raison}"
-    )
+def evaluer_campagne(
+    jeu: list[CasDeTest],
+    metriques: dict[str, Callable[[CasDeTest], float]],
+) -> dict[str, object]:
+    details = []
+    for cas in jeu:
+        scores = {nom: mesure(cas) for nom, mesure in metriques.items()}
+        details.append({"question": cas.question, **scores})
+    moyennes = {
+        nom: statistics.mean(ligne[nom] for ligne in details)
+        for nom in metriques
+        if details
+    }
+    return {"moyennes": moyennes, "details": details}
+
+
+def verifier_non_regression(
+    cas: CasDeTest,
+    mesurer: Callable[[CasDeTest], float],
+    seuil: float,
+) -> float:
+    score = mesurer(cas)
+    if score < seuil:
+        raise AssertionError(f"Score {score:.3f} inférieur au seuil {seuil:.3f}")
+    return score
+
+
+if __name__ == "__main__":
+    exemple = CasDeTest("Durée ?", "24 mois [doc_1]", "Garantie 24 mois")
+    mesure_locale = lambda cas: float("24 mois" in cas.reponse and "24 mois" in cas.contexte)
+    print(evaluer_campagne([exemple], {"fidelite": mesure_locale}))
+    print(verifier_non_regression(exemple, mesure_locale, seuil=0.8))

@@ -635,6 +635,102 @@ def chapter_7() -> dict[str, object]:
     return notebook(cells)
 
 
+CHAPTER_8_BOOTSTRAP = f'''import os
+import subprocess
+import sys
+from pathlib import Path
+
+if not Path("src").is_dir():
+    if not Path("rag-en-pratique").is_dir():
+        subprocess.run(["git", "clone", "{REPOSITORY_URL}.git"], check=True)
+    os.chdir("rag-en-pratique")
+
+subprocess.run(
+    [sys.executable, "-m", "pip", "install", "-q", "-e", ".[observability]"],
+    check=True,
+)
+print("Environnement du chapitre 8 prêt :", Path.cwd())
+'''
+
+CHAPTER_8_OPENAI = '''# @title Activer OpenAI pour les exemples 1, 2, 3 et 5
+UTILISER_OPENAI = False # @param {type:"boolean"}
+
+if UTILISER_OPENAI:
+    import os
+    import subprocess
+    import sys
+    from getpass import getpass
+
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", ".[openai]"], check=True)
+    if not os.getenv("OPENAI_API_KEY"):
+        os.environ["OPENAI_API_KEY"] = getpass("OPENAI_API_KEY : ")
+    if not os.getenv("OPENAI_MODEL"):
+        os.environ["OPENAI_MODEL"] = input("OPENAI_MODEL : ").strip()
+    print("OpenAI est activé pour la génération et les juges.")
+else:
+    print("OpenAI désactivé. Les analyses locales restent exécutables.")
+'''
+
+
+def chapter_8() -> dict[str, object]:
+    badge = (
+        "https://colab.research.google.com/github/Ahouahounko/rag-en-pratique/"
+        "blob/main/chapters/chapitre-08-observabilite/08_observabilite.ipynb"
+    )
+    examples = ROOT / "chapters/chapitre-08-observabilite/examples"
+    lessons = [
+        ("01_generation_jeu.py", "Jeu de référence", "Équilibrer cas directs, synthèses et abstentions attendues."),
+        ("02_questions_discriminantes.py", "Questions discriminantes", "Transformer les voisins du retriever en distracteurs réalistes."),
+        ("03_filtrage_questions.py", "Filtrage par réalisme", "Écarter les questions synthétiques artificielles avant l'évaluation."),
+        ("04_prompt_juge.py", "Prompt du juge", "Définir le critère, l'échelle et une justification auditable."),
+        ("05_execution_juge.py", "Exécution du juge", "Normaliser la note et conserver la sortie brute."),
+        ("06_deux_outils.py", "Deux outils complémentaires", "Séparer campagne exploratoire et seuil bloquant de non-régression."),
+        ("07_matrice_attribution.py", "Matrice d'attribution", "Localiser les défauts du retriever, du générateur ou de l'ancrage."),
+        ("08_substitution_contexte.py", "Substitution de contexte", "Vérifier que la réponse change quand le contexte utile disparaît."),
+        ("09_percentiles.py", "Percentiles de latence", "Suivre p50, p95 et p99 sur une fenêtre bornée."),
+        ("10_detection_drift.py", "Détection de dérive", "Combiner significativité statistique et ampleur pratique."),
+    ]
+    cells = [
+        markdown(
+            f"# Chapitre 8 — Observabilité du RAG\n\n"
+            f"[![Ouvrir dans Colab](https://colab.research.google.com/assets/colab-badge.svg)]({badge})\n\n"
+            "Ce notebook couvre les 10 exemples du chapitre. OpenAI est facultatif ; "
+            "l'attribution, la latence et la dérive s'exécutent localement."
+        ),
+        markdown(
+            "## Ressources utiles\n\n"
+            "- [OpenAI Docs — observabilité et usage](https://developers.openai.com/api/docs/guides/agents-api/observability)\n"
+            "- [OpenAI Docs — tracing](https://developers.openai.com/api/docs/guides/agents-api/tracing)\n"
+            "- [RAGAS — métriques](https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/)\n"
+            "- [SciPy — test KS](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html)"
+        ),
+        markdown("## 0. Préparer Colab ou Jupyter"),
+        code(CHAPTER_8_BOOTSTRAP),
+        markdown("## Configuration OpenAI facultative"),
+        code(CHAPTER_8_OPENAI),
+    ]
+    for index, (filename, title, explanation) in enumerate(lessons, start=1):
+        source = (examples / filename).read_text(encoding="utf-8")
+        cells.extend(
+            [
+                markdown(
+                    f"## {index}. {title}\n\n{explanation}\n\n"
+                    f"Script correspondant : [`{filename}`](examples/{filename})"
+                ),
+                code("# ruff: noqa: F811\n" + source),
+            ]
+        )
+    cells.append(
+        markdown(
+            "## Bilan\n\n"
+            "L'observabilité utile relie chaque alerte à des exemples inspectables. "
+            "Conservez les traces nécessaires, mesurez les distributions plutôt que les seules "
+            "moyennes, et calibrez régulièrement les juges automatiques sur des humains."
+        )
+    )
+    return notebook(cells)
+
+
 def chapter_2() -> dict[str, object]:
     badge = (
         "https://colab.research.google.com/github/Ahouahounko/rag-en-pratique/"
@@ -874,6 +970,7 @@ def main() -> None:
         chapter_6(),
     )
     write(ROOT / "chapters/chapitre-07-evaluation/07_evaluation.ipynb", chapter_7())
+    write(ROOT / "chapters/chapitre-08-observabilite/08_observabilite.ipynb", chapter_8())
     write(ROOT / "chapters/chapitre-09-docurag/09_docurag.ipynb", chapter_9())
 
 

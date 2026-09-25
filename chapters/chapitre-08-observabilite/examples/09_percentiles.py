@@ -1,54 +1,82 @@
+"""Suivre des percentiles glissants de latence, étape par étape."""
+
+from __future__ import annotations
+
+import math
+import statistics
 import time
 from collections import deque
-import statistics
+
+ETAPES = ("vectorisation", "recherche", "reclassement", "generation", "total")
+
+
+def percentile(valeurs: list[float], quantile: float) -> float:
+    if not valeurs:
+        raise ValueError("Aucune mesure")
+    if not 0 < quantile <= 1:
+        raise ValueError("Le quantile doit appartenir à ]0, 1]")
+    triees = sorted(valeurs)
+    return triees[math.ceil(quantile * len(triees)) - 1]
 
 
 class SuiviLatence:
-    """Percentiles glissants, etape par etape.
-
-    On conserve les mesures INDIVIDUELLES : une moyenne cumulee
-    ne permet pas de reconstituer un percentile. C'est l'erreur
-    d'instrumentation la plus courante, et elle est irreversible.
-    """
-
-    def __init__(self, fenetre: int = 1000):
-        # deque bornee : les mesures les plus anciennes sortent
-        # automatiquement, la memoire reste constante.
-        self.mesures = {etape: deque(maxlen=fenetre)
-                        for etape in ("vectorisation", "recherche",
-                                      "reclassement", "generation",
-                                      "total")}
+    def __init__(self, fenetre: int = 1000, minimum: int = 20) -> None:
+        if fenetre <= 0 or minimum <= 0:
+            raise ValueError("fenetre et minimum doivent être positifs")
+        self.minimum = minimum
+        self.mesures = {etape: deque(maxlen=fenetre) for etape in ETAPES}
 
     def chronometrer(self, etape: str):
-        """Context manager : with suivi.chronometrer("recherche"):"""
+        if etape not in self.mesures:
+            raise KeyError(f"Étape inconnue : {etape}")
         return _Chrono(self.mesures[etape])
 
-    def percentiles(self) -> dict:
+    def enregistrer(self, etape: str, millisecondes: float) -> None:
+        if millisecondes < 0:
+            raise ValueError("Une latence ne peut pas être négative")
+        self.mesures[etape].append(float(millisecondes))
+
+    def percentiles(self) -> dict[str, dict[str, float | int]]:
         rapport = {}
         for etape, valeurs in self.mesures.items():
-            if len(valeurs) < 20:      # trop peu pour un percentile
+            if len(valeurs) < self.minimum:
                 continue
-            triees = sorted(valeurs)
+            liste = list(valeurs)
             rapport[etape] = {
-                "p50": round(statistics.median(triees), 1),
-                "p95": round(triees[int(len(triees) * 0.95)], 1),
-                "p99": round(triees[int(len(triees) * 0.99)], 1),
-                "n": len(triees),
+                "p50": round(statistics.median(liste), 1),
+                "p95": round(percentile(liste, 0.95), 1),
+                "p99": round(percentile(liste, 0.99), 1),
+                "n": len(liste),
             }
         return rapport
 
-    def part_de_chaque_etape(self) -> dict:
-        """Ou passe le temps ? Repond avant d'optimiser au hasard."""
-        p = self.percentiles()
-        total = p.get("total", {}).get("p50")
+    def part_de_chaque_etape(self) -> dict[str, str]:
+        rapport = self.percentiles()
+        total = rapport.get("total", {}).get("p50")
         if not total:
             return {}
-        return {etape: f"{v['p50'] / total * 100:.0f} %"
-                for etape, v in p.items() if etape != "total"}
+        return {
+            etape: f"{float(valeurs['p50']) / float(total) * 100:.0f} %"
+            for etape, valeurs in rapport.items()
+            if etape != "total"
+        }
 
 
 class _Chrono:
-    def __init__(self, cible): self.cible = cible
-    def __enter__(self): self.debut = time.perf_counter(); return self
-    def __exit__(self, *_):
+    def __init__(self, cible: deque) -> None:
+        self.cible = cible
+        self.debut = 0.0
+
+    def __enter__(self):
+        self.debut = time.perf_counter()
+        return self
+
+    def __exit__(self, *_: object) -> None:
         self.cible.append((time.perf_counter() - self.debut) * 1000)
+
+
+if __name__ == "__main__":
+    suivi = SuiviLatence(minimum=5)
+    for valeur in [10, 12, 14, 18, 40]:
+        suivi.enregistrer("recherche", valeur)
+    print(suivi.percentiles())

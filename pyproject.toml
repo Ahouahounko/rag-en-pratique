@@ -35,6 +35,10 @@ retrieval = [
 prompting = [
   "tiktoken>=0.9,<1",
 ]
+observability = [
+  "numpy>=2,<3",
+  "scipy>=1.14,<2",
+]
 vectorstores = [
   "faiss-cpu>=1.9,<2",
   "numpy>=2,<3",
@@ -73,6 +77,7 @@ all = [
   "qdrant-client>=1.12,<2",
   "rank-bm25>=0.2.2,<1",
   "requests>=2.32,<3",
+  "scipy>=1.14,<2",
   "sentence-transformers>=3,<6",
   "streamlit>=1.40,<2",
   "tiktoken>=0.9,<1",

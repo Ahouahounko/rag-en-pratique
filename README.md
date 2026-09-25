@@ -88,6 +88,8 @@ Les exemples RAG acceptent OpenAI, Hugging Face ou Ollama. Configurez
   contexte, citations, refus, conversation, synthèse et tests de régression ;
 - [Chapitre 7 — Évaluation](chapters/chapitre-07-evaluation/07_evaluation.ipynb) :
   métriques de rang, fidélité, campagne d'évaluation et diagnostic ;
+- [Chapitre 8 — Observabilité](chapters/chapitre-08-observabilite/08_observabilite.ipynb) :
+  jeux de référence, juges, attribution, latence et détection de dérive ;
 - [Chapitre 9 — DocuRAG](chapters/chapitre-09-docurag/09_docurag.ipynb) :
   application modulaire et parcours complet.
 

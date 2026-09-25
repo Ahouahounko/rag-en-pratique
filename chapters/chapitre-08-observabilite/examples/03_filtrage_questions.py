@@ -1,44 +1,35 @@
-PROMPT_FILTRAGE = """Tu evalues le realisme de questions destinees
-a tester un moteur de recherche immobilier.
+"""Filtrer des questions synthétiques selon leur réalisme."""
 
-Voici des questions que nous avons notees manuellement :
+from __future__ import annotations
 
-REALISTES
-- "Quelle est la taxe fonciere du 12 rue des Lilas ?"
-  Note 5 - typique, concise, ciblee sur un bien.
-- "Montre-moi les maisons 3 chambres a Bordeaux avec un jardin."
-  Note 5 - recherche filtree naturelle.
+from rag_en_pratique.observability import extraire_note
+from rag_en_pratique.prompting import generer, openai_configure
 
-IRREALISTES
-- "De quelle couleur est la troisieme brique de la cheminee du
-   bien vendu hier ?"
-  Note 1 - specificite absurde, personne ne demande cela.
-- "Quelle est la surface cumulee de tous les biens du 33000 ?"
-  Note 2 - agregation etrange, hors des usages de recherche.
-
-Note la question suivante de 1 a 5 et justifie brievement.
-
-QUESTION : {question}
-
-Explication : [breve]
-Note : [1-5]"""
+INSTRUCTIONS = """Note le réalisme d'une question de recherche immobilière de 1 à 5.
+5 = formulation naturelle et besoin plausible ; 1 = détail absurde ou demande artificielle.
+Réponds avec une brève explication, puis une ligne « Note : N »."""
 
 
-def filtrer(questions: list[dict], modele,
-            note_minimale: int = 4) -> list[dict]:
-    """Ecarte les questions peu realistes.
-
-    L'echelle 1-5 est ici legitime alors que nous recommandons
-    ailleurs des jugements binaires : on ne mesure pas une
-    performance, on CLASSE des candidats pour couper la queue
-    de distribution. La finesse de l'echelle sert le tri, elle
-    n'a pas a etre reproductible au dixieme pres.
-    """
+def filtrer(
+    questions: list[dict[str, object]],
+    note_minimale: int = 4,
+    *,
+    client=None,
+    model: str | None = None,
+) -> list[dict[str, object]]:
     retenues = []
-    for q in questions:
-        sortie = modele.invoke(
-            PROMPT_FILTRAGE.format(question=q["question"])).content
+    for question in questions:
+        sortie = generer(
+            INSTRUCTIONS,
+            f"QUESTION : {question['question']}",
+            client=client,
+            model=model,
+        )
         note = extraire_note(sortie)
         if note >= note_minimale:
-            retenues.append({**q, "note_realisme": note})
+            retenues.append({**question, "note_realisme": note, "justification": sortie})
     return retenues
+
+
+if __name__ == "__main__" and not openai_configure():
+    print("Exemple prêt : configurez OPENAI_API_KEY et OPENAI_MODEL.")
