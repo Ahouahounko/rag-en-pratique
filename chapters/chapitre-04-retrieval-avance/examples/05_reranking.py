@@ -1,28 +1,51 @@
-from sentence_transformers import CrossEncoder
+"""Re-ranking des candidats avec un CrossEncoder Hugging Face."""
 
-# Modele leger et solide, ~80 Mo, tourne sans GPU.
-# Il renvoie un score de pertinence pour une paire (question, texte).
-RERANKER = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+from dataclasses import dataclass
+from typing import Any, Protocol
 
 
-def rechercher_et_reclasser(question: str, retriever,
-                            n_candidats: int = 20,
-                            n_final: int = 5) -> list:
-    """Cascade : filtrage rapide, puis classement precis."""
+@dataclass(frozen=True)
+class Passage:
+    page_content: str
+    source: str
 
-    # Etape 1 - le filet large (quelques millisecondes)
+
+class Retriever(Protocol):
+    def invoke(self, question: str) -> list[Passage]: ...
+
+
+def charger_reranker() -> Any:
+    from sentence_transformers import CrossEncoder
+
+    return CrossEncoder("cross-encoder/ms-marco-MiniLM-L6-v2")
+
+
+def rechercher_et_reclasser(
+    question: str,
+    retriever: Retriever,
+    *,
+    reranker: Any = None,
+    n_candidats: int = 20,
+    n_final: int = 5,
+) -> list[Passage]:
     candidats = retriever.invoke(question)[:n_candidats]
     if not candidats:
         return []
+    modele = reranker or charger_reranker()
+    scores = modele.predict([(question, doc.page_content) for doc in candidats])
+    classes = sorted(zip(candidats, scores, strict=True), key=lambda paire: paire[1], reverse=True)
+    return [document for document, _ in classes[:n_final]]
 
-    # Etape 2 - le jury (quelques dizaines de millisecondes)
-    # Chaque paire est evaluee en tenant compte des interactions
-    # directes entre les mots de la question et ceux du texte.
-    paires = [(question, doc.page_content) for doc in candidats]
-    scores = RERANKER.predict(paires)
 
-    # Etape 3 - le classement final
-    classes = sorted(zip(candidats, scores),
-                     key=lambda couple: couple[1], reverse=True)
+class RetrieverExemple:
+    def invoke(self, question: str) -> list[Passage]:
+        del question
+        return [
+            Passage("La livraison prend cinq jours.", "livraison.md"),
+            Passage("Les retours sont acceptés sous trente jours.", "retours.md"),
+        ]
 
-    return [doc for doc, _ in classes[:n_final]]
+
+if __name__ == "__main__":
+    for passage in rechercher_et_reclasser("Quel est le délai de retour ?", RetrieverExemple()):
+        print(passage.source, passage.page_content)

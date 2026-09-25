@@ -80,6 +80,8 @@ Les exemples RAG acceptent OpenAI, Hugging Face ou Ollama. Configurez
   ingestion, chunking, indexation, retrieval et citations ;
 - [Chapitre 3 — Données et chunking](chapters/chapitre-03-donnees-et-chunking/03_donnees_et_chunking.ipynb) :
   16 expériences sur les stratégies de découpage et leurs métadonnées ;
+- [Chapitre 4 — Retrieval avancé](chapters/chapitre-04-retrieval-avance/04_retrieval_avance.ipynb) :
+  réécriture, expansion, HyDE, recherche hybride, reranking, MMR et compression ;
 - [Chapitre 9 — DocuRAG](chapters/chapitre-09-docurag/09_docurag.ipynb) :
   application modulaire et parcours complet.
 

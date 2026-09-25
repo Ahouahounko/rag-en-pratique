@@ -15,7 +15,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Installer le projet
-        run: pip install -e ".[dev,chunking]"
+        run: pip install -e ".[dev,chunking,retrieval]"
       - name: Vérifier le style
         run: >-
           ruff check
@@ -25,6 +25,8 @@ jobs:
           chapters/chapitre-02-premier-rag/runnable
           chapters/chapitre-03-donnees-et-chunking/examples
           chapters/chapitre-03-donnees-et-chunking/runnable
+          chapters/chapitre-04-retrieval-avance/examples
+          chapters/chapitre-04-retrieval-avance/runnable
           chapters/chapitre-09-docurag/runnable
       - name: Exécuter les tests
         run: pytest

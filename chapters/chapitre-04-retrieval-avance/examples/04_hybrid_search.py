@@ -1,43 +1,54 @@
-from rank_bm25 import BM25Okapi
+"""Recherche hybride : classement dense, BM25 et fusion RRF."""
+
 import re
+from dataclasses import dataclass
+
+from rank_bm25 import BM25Okapi
 
 
-def preparer_bm25(chunks: list) -> BM25Okapi:
-    """Construit l'index lexical a partir des memes chunks.
-
-    La tokenisation doit etre IDENTIQUE a l'indexation et a la
-    recherche, sinon "SKU-4892" et "sku 4892" ne se rencontreront
-    jamais. C'est la premiere source de bug de cette technique.
-    """
-    corpus = [tokeniser(c.page_content) for c in chunks]
-    return BM25Okapi(corpus)
+@dataclass(frozen=True)
+class Passage:
+    page_content: str
+    source: str
 
 
 def tokeniser(texte: str) -> list[str]:
-    """Minuscules + decoupe sur tout ce qui n'est ni lettre ni chiffre.
-
-    Le tiret de "SKU-4892" est conserve volontairement : c'est
-    souvent ce qui rend la reference unique dans le corpus.
-    """
-    return re.findall(r"[a-z0-9\-]+", texte.lower())
+    return re.findall(r"[a-zà-ÿ0-9\-]+", texte.lower())
 
 
-def recherche_hybride(question: str, base_vectorielle, bm25,
-                      chunks: list, k: int = 5) -> list:
-    """Interroge les deux moteurs, puis fusionne par les rangs."""
+def fusion_rrf(listes: list[list[Passage]], constante: int = 60) -> list[Passage]:
+    scores: dict[Passage, float] = {}
+    for resultats in listes:
+        for rang, passage in enumerate(resultats, start=1):
+            scores[passage] = scores.get(passage, 0.0) + 1.0 / (constante + rang)
+    return sorted(scores, key=scores.get, reverse=True)  # type: ignore[arg-type]
 
-    # On ratisse large des deux cotes : la fusion a besoin de
-    # candidats pour reperer les documents trouves par les DEUX.
-    n_candidats = k * 4
 
-    # --- Voie 1 : semantique ---
-    dense = base_vectorielle.similarity_search(question, k=n_candidats)
+class RechercheHybride:
+    def __init__(self, chunks: list[Passage]) -> None:
+        self.chunks = chunks
+        self.bm25 = BM25Okapi([tokeniser(chunk.page_content) for chunk in chunks])
 
-    # --- Voie 2 : lexicale ---
-    scores = bm25.get_scores(tokeniser(question))
-    meilleurs = sorted(range(len(scores)),
-                       key=lambda i: scores[i], reverse=True)
-    lexical = [chunks[i] for i in meilleurs[:n_candidats]]
+    def recherche_dense(self, question: str) -> list[Passage]:
+        mots = set(tokeniser(question))
+        return sorted(
+            self.chunks,
+            key=lambda chunk: len(mots & set(tokeniser(chunk.page_content))),
+            reverse=True,
+        )
 
-    # --- Fusion : on reutilise la RRF du listing precedent ---
-    return fusion_rrf([dense, lexical])[:k]
+    def rechercher(self, question: str, k: int = 5) -> list[Passage]:
+        dense = self.recherche_dense(question)
+        scores = self.bm25.get_scores(tokeniser(question))
+        ordre = sorted(range(len(scores)), key=lambda index: scores[index], reverse=True)
+        lexical = [self.chunks[index] for index in ordre]
+        return fusion_rrf([dense, lexical])[:k]
+
+
+if __name__ == "__main__":
+    corpus = [
+        Passage("Le produit SKU-4892 est garanti deux ans.", "catalogue.md"),
+        Passage("La garantie standard couvre vingt-quatre mois.", "garantie.md"),
+        Passage("La livraison prend cinq jours.", "livraison.md"),
+    ]
+    print(RechercheHybride(corpus).rechercher("garantie SKU-4892", k=2))

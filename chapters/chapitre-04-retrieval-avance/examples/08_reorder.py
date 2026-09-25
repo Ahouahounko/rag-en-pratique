@@ -1,22 +1,22 @@
-def reordonner_pour_le_prompt(chunks: list) -> list:
-    """Place les chunks les plus pertinents aux deux extremites.
+"""Réorganisation en V pour limiter l'effet 'lost in the middle'."""
 
-    Entree  : liste DEJA triee par pertinence decroissante.
-    Sortie  : meme liste, disposee en V.
+from typing import TypeVar
 
-    Avec 6 chunks classes [1, 2, 3, 4, 5, 6] :
-        ordre brut   -> 1 2 3 4 5 6   (le n.1 seul en bonne place)
-        ordre en V   -> 1 3 5 6 4 2   (n.1 au debut, n.2 a la fin)
+T = TypeVar("T")
 
-    Le principe : on distribue en alternance a gauche et a droite,
-    puis on retourne la moitie droite. Les mieux classes se
-    retrouvent aux bords, les moins bons au centre.
-    """
+
+def reordonner_pour_le_prompt(chunks: list[T]) -> list[T]:
+    """Place les éléments les mieux classés aux deux extrémités."""
+
     if len(chunks) <= 2:
         return chunks
-
-    gauche, droite = [], []
+    gauche: list[T] = []
+    droite: list[T] = []
     for position, chunk in enumerate(chunks):
         (gauche if position % 2 == 0 else droite).append(chunk)
-
     return gauche + droite[::-1]
+
+
+if __name__ == "__main__":
+    print("Classement initial :", [1, 2, 3, 4, 5, 6])
+    print("Ordre dans le prompt :", reordonner_pour_le_prompt([1, 2, 3, 4, 5, 6]))

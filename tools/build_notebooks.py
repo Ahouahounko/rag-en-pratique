@@ -200,6 +200,115 @@ def chapter_3() -> dict[str, object]:
     return notebook(cells)
 
 
+CHAPTER_4_BOOTSTRAP = f'''import os
+import subprocess
+import sys
+from pathlib import Path
+
+if not Path("src").is_dir():
+    if not Path("rag-en-pratique").is_dir():
+        subprocess.run(["git", "clone", "{REPOSITORY_URL}.git"], check=True)
+    os.chdir("rag-en-pratique")
+
+subprocess.run(
+    [
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        "-q",
+        "-e",
+        ".[retrieval,huggingface]",
+    ],
+    check=True,
+)
+print("Environnement du chapitre 4 prêt :", Path.cwd())
+'''
+
+CHAPTER_4_OPENAI = '''# @title Activer les exemples OpenAI 1, 2, 3 et 9
+UTILISER_OPENAI = False # @param {type:"boolean"}
+
+if UTILISER_OPENAI:
+    import os
+    import subprocess
+    import sys
+    from getpass import getpass
+
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-q", "-e", ".[openai]"],
+        check=True,
+    )
+    if not os.getenv("OPENAI_API_KEY"):
+        os.environ["OPENAI_API_KEY"] = getpass("OPENAI_API_KEY : ")
+    if not os.getenv("OPENAI_MODEL"):
+        os.environ["OPENAI_MODEL"] = input("OPENAI_MODEL : ").strip()
+    print("OpenAI est activé pour ce notebook.")
+else:
+    print("OpenAI désactivé. Les algorithmes locaux restent exécutables.")
+'''
+
+
+def chapter_4() -> dict[str, object]:
+    badge = (
+        "https://colab.research.google.com/github/Ahouahounko/rag-en-pratique/"
+        "blob/main/chapters/chapitre-04-retrieval-avance/04_retrieval_avance.ipynb"
+    )
+    examples = ROOT / "chapters/chapitre-04-retrieval-avance/examples"
+    lessons = [
+        ("01_query_rewriting.py", "Query Rewriting", "Rendre une question conversationnelle autonome avec OpenAI."),
+        ("02_query_expansion.py", "Query Expansion et RRF", "Diversifier les formulations, puis fusionner les classements."),
+        ("03_hyde.py", "HyDE", "Générer un document hypothétique OpenAI avant la recherche."),
+        ("04_hybrid_search.py", "Recherche hybride", "Combiner un signal dense pédagogique et BM25."),
+        ("05_reranking.py", "Re-ranking", "Reclasser les candidats avec un CrossEncoder Hugging Face."),
+        ("06_mmr_pseudocode.py", "MMR pas à pas", "Équilibrer pertinence et diversité avec une formule explicite."),
+        ("07_mmr.py", "MMR dans un vector store", "Comprendre le contrat d'une recherche MMR intégrée."),
+        ("08_reorder.py", "Réorganisation en V", "Placer les meilleurs passages aux extrémités du prompt."),
+        ("09_compression.py", "Compression contextuelle", "Extraire avec OpenAI les phrases utiles de chaque passage."),
+        ("10_pipeline_ordre.py", "Pipeline complet", "Assembler les étapes dans un ordre observable et testable."),
+    ]
+    cells = [
+        markdown(
+            f"# Chapitre 4 — Retrieval avancé\n\n"
+            f"[![Ouvrir dans Colab](https://colab.research.google.com/assets/colab-badge.svg)]({badge})\n\n"
+            "Ce notebook contient les 10 exemples du chapitre. OpenAI est facultatif ; "
+            "BM25, RRF, MMR et le réordonnancement fonctionnent sans clé."
+        ),
+        markdown(
+            "## Ressources utiles\n\n"
+            "- [OpenAI Responses API](https://developers.openai.com/api/docs/guides/text)\n"
+            "- [Sentence Transformers — Retrieve & Re-Rank](https://sbert.net/examples/sentence_transformer/applications/retrieve_rerank/README.html)\n"
+            "- [rank-bm25](https://github.com/dorianbrown/rank_bm25)"
+        ),
+        markdown("## 0. Préparer Colab ou Jupyter\n\nInstallation de BM25 et Sentence Transformers."),
+        code(CHAPTER_4_BOOTSTRAP),
+        markdown(
+            "## Configuration OpenAI facultative\n\n"
+            "Activez cette cellule uniquement pour exécuter les exemples 1, 2, 3 et 9."
+        ),
+        code(CHAPTER_4_OPENAI),
+    ]
+    for index, (filename, title, explanation) in enumerate(lessons, start=1):
+        source = (examples / filename).read_text(encoding="utf-8")
+        cells.extend(
+            [
+                markdown(
+                    f"## {index}. {title}\n\n{explanation}\n\n"
+                    f"Script correspondant : [`{filename}`](examples/{filename})"
+                ),
+                code("# ruff: noqa: F811\n" + source),
+            ]
+        )
+    cells.append(
+        markdown(
+            "## Bilan\n\n"
+            "Un retrieval avancé est une cascade : réparer la requête, élargir le rappel, "
+            "fusionner, reclasser, diversifier, compresser puis ordonner le contexte. "
+            "Chaque étape doit être évaluée séparément avant d'être conservée."
+        )
+    )
+    return notebook(cells)
+
+
 def chapter_2() -> dict[str, object]:
     badge = (
         "https://colab.research.google.com/github/Ahouahounko/rag-en-pratique/"
@@ -425,6 +534,10 @@ def main() -> None:
     write(
         ROOT / "chapters/chapitre-03-donnees-et-chunking/03_donnees_et_chunking.ipynb",
         chapter_3(),
+    )
+    write(
+        ROOT / "chapters/chapitre-04-retrieval-avance/04_retrieval_avance.ipynb",
+        chapter_4(),
     )
     write(ROOT / "chapters/chapitre-09-docurag/09_docurag.ipynb", chapter_9())
 

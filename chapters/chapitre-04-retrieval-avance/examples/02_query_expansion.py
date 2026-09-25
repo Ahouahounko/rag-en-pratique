@@ -1,58 +1,71 @@
-from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
+"""Query Expansion avec OpenAI, puis fusion locale par RRF."""
 
-# Temperature legerement positive : on VEUT de la variete ici,
-# contrairement a la reformulation ou l'on cherchait la stabilite.
-GENERATEUR = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
-
-PROMPT_VARIANTES = ChatPromptTemplate.from_template("""
-Genere {n} reformulations de la question ci-dessous, chacune sous un
-angle different : synonymes metier, tournure plus generale, tournure
-plus specifique.
-Une reformulation par ligne, sans numerotation, sans commentaire.
-
-Question : {question}
-""")
+import os
+from dataclasses import dataclass
+from typing import Any, Protocol
 
 
-def generer_variantes(question: str, n: int = 3) -> list[str]:
-    """Produit n reformulations, plus la question d'origine."""
-    reponse = (PROMPT_VARIANTES | GENERATEUR).invoke({
-        "question": question, "n": n,
-    }).content
-
-    variantes = [ligne.strip() for ligne in reponse.split("\n")
-                 if ligne.strip()]
-
-    # La question originale reste dans le lot : la reformulation
-    # peut deriver, l'originale sert de garde-fou.
-    return [question] + variantes
+@dataclass(frozen=True)
+class Passage:
+    page_content: str
+    source: str
 
 
-def fusion_rrf(listes: list[list], k: int = 60) -> list:
-    """Fusionne plusieurs listes de resultats par leurs RANGS.
+class Retriever(Protocol):
+    def invoke(self, question: str) -> list[Passage]: ...
 
-    On ignore volontairement les scores de similarite : ils ne sont
-    pas comparables d'une recherche a l'autre (cf. texte).
-    """
-    cumul = {}
 
+def generer_variantes(
+    question: str,
+    n: int = 3,
+    *,
+    client: Any = None,
+    model: str | None = None,
+) -> list[str]:
+    """Produit plusieurs formulations et conserve la question d'origine."""
+
+    if client is None:
+        if not os.getenv("OPENAI_API_KEY"):
+            raise RuntimeError("OPENAI_API_KEY n'est pas configurée")
+        from openai import OpenAI
+
+        client = OpenAI()
+    response = client.responses.create(
+        model=model or os.getenv("OPENAI_MODEL"),
+        instructions="Retourne uniquement les reformulations, une par ligne.",
+        input=(
+            f"Génère {n} reformulations de cette question avec des synonymes métier, "
+            f"un angle plus général et un angle plus précis :\n{question}"
+        ),
+    )
+    variantes = [ligne.strip(" -0123456789.") for ligne in response.output_text.splitlines()]
+    return [question, *[variante for variante in variantes if variante]][: n + 1]
+
+
+def fusion_rrf(listes: list[list[Passage]], constante: int = 60) -> list[Passage]:
+    """Fusionne des classements incompatibles à partir de leurs rangs."""
+
+    cumul: dict[tuple[str, str], dict[str, object]] = {}
     for resultats in listes:
-        for rang, doc in enumerate(resultats, start=1):
-            cle = doc.page_content[:120]        # identifiant du chunk
-
-            if cle not in cumul:
-                cumul[cle] = {"score": 0.0, "doc": doc}
-
-            cumul[cle]["score"] += 1.0 / (k + rang)
-
-    ordonne = sorted(cumul.values(),
-                     key=lambda e: e["score"], reverse=True)
-    return [e["doc"] for e in ordonne]
+        for rang, passage in enumerate(resultats, start=1):
+            cle = (passage.source, passage.page_content)
+            entree = cumul.setdefault(cle, {"score": 0.0, "passage": passage})
+            entree["score"] = float(entree["score"]) + 1.0 / (constante + rang)
+    classes = sorted(cumul.values(), key=lambda item: float(item["score"]), reverse=True)
+    return [item["passage"] for item in classes]  # type: ignore[misc]
 
 
-def recherche_elargie(question: str, retriever, n: int = 3, k: int = 5):
-    """Cherche depuis plusieurs formulations, puis fusionne."""
-    variantes = generer_variantes(question, n)
-    listes = [retriever.invoke(v) for v in variantes]
-    return fusion_rrf(listes)[:k]
+def recherche_elargie(question: str, retriever: Retriever, variantes: list[str], k: int = 5) -> list[Passage]:
+    return fusion_rrf([retriever.invoke(variante) for variante in [question, *variantes]])[:k]
+
+
+if __name__ == "__main__":
+    listes = [
+        [Passage("Retour sous 30 jours", "retours.md"), Passage("Livraison en 5 jours", "livraison.md")],
+        [Passage("Livraison en 5 jours", "livraison.md"), Passage("Retour sous 30 jours", "retours.md")],
+    ]
+    print("Démonstration RRF :", [passage.source for passage in fusion_rrf(listes)])
+    if not os.getenv("OPENAI_API_KEY") or not os.getenv("OPENAI_MODEL"):
+        print("Expansion OpenAI facultative : configurez OPENAI_API_KEY et OPENAI_MODEL.")
+    else:
+        print("Variantes OpenAI :", generer_variantes("Quel est le délai de retour ?"))

@@ -29,6 +29,9 @@ chunking = [
   "numpy>=2,<3",
   "tiktoken>=0.9,<1",
 ]
+retrieval = [
+  "rank-bm25>=0.2.2,<1",
+]
 dev = [
   "jupyterlab>=4,<5",
   "pytest>=8,<9",
@@ -36,6 +39,7 @@ dev = [
 ]
 pdf = [
   "pypdf>=5,<7",
+  "rank-bm25>=0.2.2,<1",
 ]
 app = [
   "fastapi>=0.115,<1",
