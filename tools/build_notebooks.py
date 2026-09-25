@@ -533,6 +533,108 @@ def chapter_6() -> dict[str, object]:
     return notebook(cells)
 
 
+CHAPTER_7_BOOTSTRAP = f'''import os
+import subprocess
+import sys
+from pathlib import Path
+
+if not Path("src").is_dir():
+    if not Path("rag-en-pratique").is_dir():
+        subprocess.run(["git", "clone", "{REPOSITORY_URL}.git"], check=True)
+    os.chdir("rag-en-pratique")
+
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", "."], check=True)
+print("Environnement du chapitre 7 prêt :", Path.cwd())
+'''
+
+CHAPTER_7_OPENAI = '''# @title Activer le juge OpenAI pour les exemples 3 et 4
+UTILISER_OPENAI = False # @param {type:"boolean"}
+
+if UTILISER_OPENAI:
+    import os
+    import subprocess
+    import sys
+    from getpass import getpass
+
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", ".[openai]"], check=True)
+    if not os.getenv("OPENAI_API_KEY"):
+        os.environ["OPENAI_API_KEY"] = getpass("OPENAI_API_KEY : ")
+    if not os.getenv("OPENAI_MODEL"):
+        os.environ["OPENAI_MODEL"] = input("OPENAI_MODEL : ").strip()
+    print("Le juge OpenAI est activé.")
+else:
+    print("Juge OpenAI désactivé. Les métriques de retrieval restent exécutables.")
+'''
+
+
+def chapter_7() -> dict[str, object]:
+    badge = (
+        "https://colab.research.google.com/github/Ahouahounko/rag-en-pratique/"
+        "blob/main/chapters/chapitre-07-evaluation/07_evaluation.ipynb"
+    )
+    examples = ROOT / "chapters/chapitre-07-evaluation/examples"
+    lessons = [
+        (
+            "01_metriques_rang.py",
+            "Métriques de rang",
+            "Mesurer séparément présence, précision, rappel et position du premier résultat utile.",
+        ),
+        (
+            "02_ndcg_gradue.py",
+            "nDCG gradué",
+            "Récompenser davantage les passages hautement pertinents placés en tête.",
+        ),
+        (
+            "03_fidelite_maison.py",
+            "Fidélité détaillée",
+            "Décomposer la réponse puis vérifier chaque affirmation avec un juge OpenAI.",
+        ),
+        (
+            "04_campagne_evaluation.py",
+            "Campagne complète",
+            "Conserver les scores par cas, leurs moyennes, les métadonnées et un diagnostic.",
+        ),
+    ]
+    cells = [
+        markdown(
+            f"# Chapitre 7 — Évaluation du RAG\n\n"
+            f"[![Ouvrir dans Colab](https://colab.research.google.com/assets/colab-badge.svg)]({badge})\n\n"
+            "Les métriques de retrieval sont locales et reproductibles. Le juge OpenAI est "
+            "facultatif et sert uniquement aux critères sémantiques."
+        ),
+        markdown(
+            "## Ressources utiles\n\n"
+            "- [OpenAI Docs — bonnes pratiques d'évaluation](https://developers.openai.com/api/docs/guides/evaluation-best-practices)\n"
+            "- [OpenAI Developers — ressources sur les évaluations](https://developers.openai.com/learn/evals)\n"
+            "- [scikit-learn — nDCG](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.ndcg_score.html)\n"
+            "- [RAGAS — métriques](https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/)"
+        ),
+        markdown("## 0. Préparer Colab ou Jupyter"),
+        code(CHAPTER_7_BOOTSTRAP),
+        markdown("## Configuration facultative du juge OpenAI"),
+        code(CHAPTER_7_OPENAI),
+    ]
+    for index, (filename, title, explanation) in enumerate(lessons, start=1):
+        source = (examples / filename).read_text(encoding="utf-8")
+        cells.extend(
+            [
+                markdown(
+                    f"## {index}. {title}\n\n{explanation}\n\n"
+                    f"Script correspondant : [`{filename}`](examples/{filename})"
+                ),
+                code("# ruff: noqa: F811\n" + source),
+            ]
+        )
+    cells.append(
+        markdown(
+            "## Bilan\n\n"
+            "Une moyenne seule ne suffit pas : conservez le détail par question, la version du jeu, "
+            "le modèle juge et les seuils. Calibrez les juges automatiques sur des annotations humaines."
+        )
+    )
+    return notebook(cells)
+
+
 def chapter_2() -> dict[str, object]:
     badge = (
         "https://colab.research.google.com/github/Ahouahounko/rag-en-pratique/"
@@ -771,6 +873,7 @@ def main() -> None:
         ROOT / "chapters/chapitre-06-prompt-engineering/06_prompt_engineering.ipynb",
         chapter_6(),
     )
+    write(ROOT / "chapters/chapitre-07-evaluation/07_evaluation.ipynb", chapter_7())
     write(ROOT / "chapters/chapitre-09-docurag/09_docurag.ipynb", chapter_9())
 
 

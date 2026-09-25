@@ -1,18 +1,23 @@
 # Exemples du chapitre 7
 
-Les fichiers de ce dossier sont extraits automatiquement du manuscrit. 
-Le contenu est conservé tel quel afin de permettre sa revue avant transformation 
-en exemple autonome ou en notebook exécutable.
+| # | Sujet | Fichier | Exécution |
+|---:|---|---|---|
+| 01 | Hit Rate, Precision@k, Recall@k, MRR et nDCG | [`01_metriques_rang.py`](01_metriques_rang.py) | locale |
+| 02 | nDCG à pertinence graduée | [`02_ndcg_gradue.py`](02_ndcg_gradue.py) | locale |
+| 03 | Fidélité détaillée | [`03_fidelite_maison.py`](03_fidelite_maison.py) | OpenAI facultatif |
+| 04 | Campagne et diagnostic | [`04_campagne_evaluation.py`](04_campagne_evaluation.py) | local + juge injectable |
 
-| # | Label LaTeX | Légende | Type | Fichier | Validation |
-|---:|---|---|---|---|---|
-| 01 | `lst:metriques_rang` | Métriques de rang du retriever, sans aucun appel de modèle | python | [`01_metriques_rang.py`](01_metriques_rang.py) | syntaxe validée |
-| 02 | `lst:ndcg_gradue` | nDCG avec pertinence graduée | python | [`02_ndcg_gradue.py`](02_ndcg_gradue.py) | syntaxe validée |
-| 03 | `lst:fidelite_maison` | Faithfulness calculée de bout en bout, sans bibliothèque | python | [`03_fidelite_maison.py`](03_fidelite_maison.py) | syntaxe validée |
-| 04 | `lst:campagne_evaluation` | Campagne d'évaluation avec diagnostic automatique | python | [`04_campagne_evaluation.py`](04_campagne_evaluation.py) | syntaxe validée |
+## Exécution
 
-## Convention de validation
+```bash
+python chapters/chapitre-07-evaluation/runnable/run_chapter.py
+```
 
-- **syntaxe validée** : le fichier Python passe l'analyse syntaxique ;
-- **extrait pédagogique** : le bloc est partiel, contient des ellipses ou demande un contexte ;
-- **à valider** : commande, configuration, prompt ou autre contenu à tester manuellement.
+Pour utiliser OpenAI comme juge :
+
+```bash
+pip install -e ".[openai]"
+```
+
+Les fonctions acceptent un client injecté, ce qui permet de tester toute la
+logique sans appel payant.

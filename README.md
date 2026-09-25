@@ -86,6 +86,8 @@ Les exemples RAG acceptent OpenAI, Hugging Face ou Ollama. Configurez
   FAISS, Qdrant, Chroma, Pinecone et architectures de retrieval ;
 - [Chapitre 6 — Prompt engineering](chapters/chapitre-06-prompt-engineering/06_prompt_engineering.ipynb) :
   contexte, citations, refus, conversation, synthèse et tests de régression ;
+- [Chapitre 7 — Évaluation](chapters/chapitre-07-evaluation/07_evaluation.ipynb) :
+  métriques de rang, fidélité, campagne d'évaluation et diagnostic ;
 - [Chapitre 9 — DocuRAG](chapters/chapitre-09-docurag/09_docurag.ipynb) :
   application modulaire et parcours complet.
 

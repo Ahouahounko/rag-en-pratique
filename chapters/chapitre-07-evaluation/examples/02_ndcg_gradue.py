@@ -1,31 +1,37 @@
+"""Calculer le nDCG avec des annotations de pertinence graduées."""
+
+from __future__ import annotations
+
 import math
 
 
-def ndcg_gradue(recuperes: list[str],
-                pertinence: dict[str, int],
-                k: int = 5) -> float:
-    """nDCG avec des notes de pertinence 0 a 3.
+def gain(note: int, exponentiel: bool = True) -> float:
+    if note < 0:
+        raise ValueError("Une note de pertinence ne peut pas être négative")
+    return float(2**note - 1 if exponentiel else note)
 
-    pertinence : {"chunk_12": 3, "chunk_47": 1, ...}
-                 0 = hors sujet, 1 = marginal,
-                 2 = pertinent,  3 = hautement pertinent
 
-    Les passages absents du dictionnaire sont supposes non
-    pertinents : c'est la convention la plus sure, mais elle
-    suppose une annotation exhaustive du jeu de reference.
-    """
-    tetes = recuperes[:k]
-
-    # Gain reel : la note du passage, escomptee par sa position
-    dcg = sum(pertinence.get(doc, 0) / math.log2(rang + 1)
-              for rang, doc in enumerate(tetes, start=1))
-
-    # Gain ideal : les MEMES notes, dans le meilleur ordre possible.
-    # On trie toutes les notes connues, pas seulement les recuperees :
-    # sinon on se compare a sa propre selection, ce qui masque les
-    # passages qu'on a rates (cf. le piege du nDCG).
+def ndcg_gradue(
+    recuperes: list[str],
+    pertinence: dict[str, int],
+    k: int = 5,
+    *,
+    gain_exponentiel: bool = True,
+) -> float:
+    if k <= 0:
+        raise ValueError("k doit être strictement positif")
+    dcg = sum(
+        gain(pertinence.get(document, 0), gain_exponentiel) / math.log2(rang + 1)
+        for rang, document in enumerate(recuperes[:k], start=1)
+    )
     meilleures = sorted(pertinence.values(), reverse=True)[:k]
-    idcg = sum(note / math.log2(rang + 1)
-               for rang, note in enumerate(meilleures, start=1))
-
+    idcg = sum(
+        gain(note, gain_exponentiel) / math.log2(rang + 1)
+        for rang, note in enumerate(meilleures, start=1)
+    )
     return dcg / idcg if idcg else 0.0
+
+
+if __name__ == "__main__":
+    notes = {"chunk_1": 3, "chunk_2": 2, "chunk_3": 1, "chunk_4": 0}
+    print(round(ndcg_gradue(["chunk_3", "chunk_1", "chunk_4"], notes, k=3), 3))

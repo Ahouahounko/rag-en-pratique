@@ -31,6 +31,8 @@ jobs:
           chapters/chapitre-05-bases-vectorielles/runnable
           chapters/chapitre-06-prompt-engineering/examples
           chapters/chapitre-06-prompt-engineering/runnable
+          chapters/chapitre-07-evaluation/examples
+          chapters/chapitre-07-evaluation/runnable
           chapters/chapitre-09-docurag/runnable
       - name: Exécuter les tests
         run: pytest
