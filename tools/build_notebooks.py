@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-
 REPOSITORY_URL = "https://github.com/Ahouahounko/rag-en-pratique"
 ROOT = Path(__file__).resolve().parents[1]
 

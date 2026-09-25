@@ -15,7 +15,7 @@ class Settings:
     top_k: int = 3
 
     @classmethod
-    def from_env(cls) -> "Settings":
+    def from_env(cls) -> Settings:
         return cls(
             use_openai=os.getenv("DOCURAG_USE_OPENAI", "false").lower() == "true",
             openai_model=os.getenv("OPENAI_MODEL") or None,

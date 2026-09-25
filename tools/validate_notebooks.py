@@ -16,7 +16,7 @@ def validate(path: Path, *, execute: bool) -> None:
         source = "".join(cell["source"])
         compiled = compile(source, f"{path}:cell-{index}", "exec")
         if execute:
-            exec(compiled, namespace)
+            exec(compiled, namespace)  # noqa: S102 - exécution locale explicitement demandée
     print(f"{path}: OK")
 
 

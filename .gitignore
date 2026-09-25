@@ -23,6 +23,7 @@ venv/
 .idea/
 .DS_Store
 Thumbs.db
+.tmp_tools/
 
 # Données et index locaux
 data/private/

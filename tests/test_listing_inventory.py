@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 EXPECTED_COUNTS = {
     "chapitre-01-fondations-llm": 0,
     "chapitre-02-premier-rag": 4,

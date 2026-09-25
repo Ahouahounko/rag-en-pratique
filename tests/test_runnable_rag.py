@@ -11,7 +11,6 @@ from rag_en_pratique.core import (
     split_document,
 )
 
-
 ROOT = Path(__file__).parents[1]
 
 

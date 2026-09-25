@@ -7,7 +7,7 @@ dépôt reste donc utilisable sans SDK ni clé API.
 from __future__ import annotations
 
 import os
-from typing import Sequence
+from collections.abc import Sequence
 
 from .core import SearchResult
 
