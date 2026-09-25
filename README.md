@@ -75,6 +75,16 @@ Les exemples sont conçus pour isoler les fournisseurs externes derrière une
 configuration commune. Une clé OpenAI peut être utilisée, mais elle n'est pas
 requise pour tous les chapitres.
 
+## Notebooks disponibles
+
+- [Chapitre 2 — Premier RAG](chapters/chapitre-02-premier-rag/02_premier_rag.ipynb) :
+  ingestion, chunking, indexation, retrieval et citations ;
+- [Chapitre 9 — DocuRAG](chapters/chapitre-09-docurag/09_docurag.ipynb) :
+  application modulaire et parcours complet.
+
+Ces notebooks fonctionnent hors ligne par défaut et proposent un mode OpenAI
+facultatif. Consultez [la configuration OpenAI](docs/openai-mode.md).
+
 ## Tests
 
 ```bash
