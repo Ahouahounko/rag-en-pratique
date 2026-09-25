@@ -1,8 +1,8 @@
 # Exemples du chapitre 9
 
-Les fichiers de ce dossier sont extraits automatiquement du manuscrit. 
-Le contenu est conservé tel quel afin de permettre sa revue avant transformation 
-en exemple autonome ou en notebook exécutable.
+Ces fichiers proviennent des extraits du manuscrit et ont été transformés en
+exemples exécutables. Les étapes qui utilisent un modèle respectent le
+fournisseur défini par `RAG_PROVIDER`.
 
 | # | Label LaTeX | Légende | Type | Fichier | Validation |
 |---:|---|---|---|---|---|

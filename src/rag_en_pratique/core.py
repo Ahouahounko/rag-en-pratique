@@ -1,4 +1,4 @@
-"""Briques communes aux exemples RAG utilisant OpenAI."""
+"""Briques communes aux exemples RAG, indépendantes du fournisseur de modèles."""
 
 from __future__ import annotations
 

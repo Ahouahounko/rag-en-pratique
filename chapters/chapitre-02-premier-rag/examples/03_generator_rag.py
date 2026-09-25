@@ -1,15 +1,15 @@
-"""Génère une réponse sourcée avec la Responses API d'OpenAI."""
+"""Génère une réponse sourcée avec le fournisseur configuré."""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 
 from rag_en_pratique.core import Document, SearchResult
-from rag_en_pratique.openai_adapter import OpenAIGenerator
+from rag_en_pratique.providers import create_generator
 
 
 def generate_answer(question: str, passages: Sequence[SearchResult]) -> str:
-    return OpenAIGenerator().generate(question, passages)
+    return create_generator().generate(question, passages)
 
 
 def main() -> None:

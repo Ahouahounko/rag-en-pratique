@@ -1,4 +1,8 @@
-# Installation minimale depuis la racine du dépôt
+# Choisir un fournisseur depuis la racine du dépôt
+pip install -e ".[openai]"
+pip install -e ".[huggingface]"
+
+# Ollama utilise la bibliothèque standard Python ; installer puis démarrer Ollama séparément
 pip install -e .
 
 # Avec lecture PDF

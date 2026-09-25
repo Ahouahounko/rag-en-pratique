@@ -1,4 +1,4 @@
-"""API FastAPI minimale exposant le pipeline DocuRAG/OpenAI."""
+"""API FastAPI minimale exposant le pipeline DocuRAG multi-fournisseur."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from rag_en_pratique.core import (
     RAGPipeline,
     split_documents,
 )
-from rag_en_pratique.openai_adapter import OpenAIEmbedder, OpenAIGenerator
+from rag_en_pratique.providers import create_provider
 
 
 class QueryRequest(BaseModel):
@@ -28,9 +28,10 @@ def build_pipeline() -> RAGPipeline:
         for path in sorted((repository / "data" / "sample").glob("*.md"))
         if path.name.lower() != "readme.md"
     ]
-    store = InMemoryVectorStore(OpenAIEmbedder())
+    provider = create_provider()
+    store = InMemoryVectorStore(provider.embedder)
     store.add(split_documents(documents, chunk_size=80, overlap=15))
-    return RAGPipeline(store, OpenAIGenerator())
+    return RAGPipeline(store, provider.generator)
 
 
 app = FastAPI(title="DocuRAG", version="1.0.0")

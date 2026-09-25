@@ -1,25 +1,19 @@
-"""Évaluation d'une réponse RAG par un juge OpenAI."""
+"""Évaluation d'une réponse RAG par le fournisseur configuré."""
 
 from __future__ import annotations
 
-import os
-
-from openai import OpenAI
+from rag_en_pratique.core import Document, SearchResult
+from rag_en_pratique.providers import create_generator
 
 
 def evaluate_grounding(question: str, context: str, answer: str) -> str:
-    model = os.getenv("OPENAI_MODEL")
-    if not model:
-        raise RuntimeError("OPENAI_MODEL n'est pas configuré")
-    response = OpenAI().responses.create(
-        model=model,
-        instructions=(
-            "Tu es un juge RAG. Évalue si la réponse est entièrement fondée "
-            "sur le contexte. Réponds par VALIDE ou INVALIDE, puis justifie brièvement."
-        ),
-        input=f"QUESTION\n{question}\n\nCONTEXTE\n{context}\n\nRÉPONSE\n{answer}",
+    judge_question = (
+        "Évalue si la réponse candidate est entièrement fondée sur le contexte. "
+        "Réponds par VALIDE ou INVALIDE, puis justifie brièvement.\n\n"
+        f"Question initiale : {question}\nRéponse candidate : {answer}"
     )
-    return response.output_text
+    passage = SearchResult(Document(context, {"source": "contexte_evaluation"}), 1.0)
+    return create_generator().generate(judge_question, [passage])
 
 
 if __name__ == "__main__":

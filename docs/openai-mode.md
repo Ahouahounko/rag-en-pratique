@@ -1,7 +1,8 @@
-# Configuration OpenAI requise
+# Configuration OpenAI
 
-Les notebooks et scripts RAG utilisent OpenAI pour les embeddings et la
-génération. Aucun moteur de substitution hors ligne n'est fourni.
+OpenAI est l'un des trois fournisseurs disponibles. Consultez le
+[guide multi-fournisseur](model-providers.md) pour choisir entre OpenAI,
+Hugging Face et Ollama.
 
 ## Variables
 
@@ -20,6 +21,6 @@ capture d'écran. Le fichier `.env` local est ignoré par le dépôt.
 - l'[API embeddings](https://developers.openai.com/api/docs/guides/embeddings)
   avec `text-embedding-3-small` par défaut pour la recherche vectorielle.
 
-Le modèle de génération n'est volontairement pas inscrit en dur : renseignez
+Le modèle de génération n'est volontairement pas imposé : renseignez
 `OPENAI_MODEL` avec un modèle auquel votre projet OpenAI a accès au moment de
 l'exécution.

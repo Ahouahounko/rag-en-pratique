@@ -1,4 +1,4 @@
-"""Premier pipeline RAG exécutable, sans service externe par défaut."""
+"""Premier pipeline RAG exécutable avec le fournisseur configuré."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from rag_en_pratique.core import (
     RAGPipeline,
     split_documents,
 )
-from rag_en_pratique.openai_adapter import OpenAIEmbedder, OpenAIGenerator
+from rag_en_pratique.providers import create_provider
 
 
 def load_markdown_documents(directory: Path) -> list[Document]:
@@ -24,9 +24,10 @@ def load_markdown_documents(directory: Path) -> list[Document]:
 def build_pipeline(data_directory: Path) -> RAGPipeline:
     documents = load_markdown_documents(data_directory)
     chunks = split_documents(documents, chunk_size=60, overlap=10)
-    store = InMemoryVectorStore(OpenAIEmbedder())
+    provider = create_provider()
+    store = InMemoryVectorStore(provider.embedder)
     store.add(chunks)
-    return RAGPipeline(store, OpenAIGenerator())
+    return RAGPipeline(store, provider.generator)
 
 
 def main() -> None:

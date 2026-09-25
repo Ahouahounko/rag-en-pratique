@@ -1,9 +1,9 @@
-"""Retrieval vectoriel utilisant les embeddings OpenAI."""
+"""Retrieval vectoriel utilisant les embeddings du fournisseur configuré."""
 
 from __future__ import annotations
 
 from rag_en_pratique.core import Document, InMemoryVectorStore, SearchResult
-from rag_en_pratique.openai_adapter import OpenAIEmbedder
+from rag_en_pratique.providers import create_embedder
 
 
 def retrieve(
@@ -16,7 +16,7 @@ def retrieve(
 
 
 def main() -> None:
-    store = InMemoryVectorStore(OpenAIEmbedder())
+    store = InMemoryVectorStore(create_embedder())
     store.add(
         [
             Document("Les retours sont acceptés sous 30 jours.", {"source": "retours.md"}),

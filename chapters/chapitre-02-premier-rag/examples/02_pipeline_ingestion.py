@@ -1,4 +1,4 @@
-"""Ingestion, chunking et indexation avec les embeddings OpenAI."""
+"""Ingestion, chunking et indexation avec le fournisseur configuré."""
 
 from __future__ import annotations
 
@@ -6,12 +6,12 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from rag_en_pratique.core import Document, InMemoryVectorStore, split_documents
-from rag_en_pratique.openai_adapter import OpenAIEmbedder
+from rag_en_pratique.providers import create_embedder
 
 
 def build_knowledge_base(documents: Sequence[Document]) -> InMemoryVectorStore:
     chunks = split_documents(documents, chunk_size=60, overlap=10)
-    store = InMemoryVectorStore(OpenAIEmbedder(model="text-embedding-3-small"))
+    store = InMemoryVectorStore(create_embedder())
     store.add(chunks)
     return store
 
@@ -24,7 +24,7 @@ def main() -> None:
         if path.name.lower() != "readme.md"
     ]
     store = build_knowledge_base(documents)
-    print(f"{len(store.documents)} chunks indexés avec OpenAI")
+    print(f"{len(store.documents)} chunks indexés")
 
 
 if __name__ == "__main__":

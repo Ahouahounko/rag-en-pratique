@@ -3,8 +3,8 @@
 Dépôt compagnon du livre consacré à la conception de systèmes de
 Retrieval-Augmented Generation (RAG), des fondations jusqu'à la production.
 
-> Le dépôt est privé pendant la rédaction du livre. Les liens Google Colab
-> seront activés lors de sa publication.
+> Le dépôt est actuellement public afin de rendre les exemples et les liens
+> Google Colab directement accessibles.
 
 ## Ce que contient le dépôt
 
@@ -71,8 +71,8 @@ vous souhaitez utiliser. Ne publiez jamais le fichier `.env`.
 jupyter lab
 ```
 
-Les exemples RAG utilisent OpenAI. Configurez `OPENAI_API_KEY` et
-`OPENAI_MODEL` dans votre environnement avant d'exécuter les appels de modèle.
+Les exemples RAG acceptent OpenAI, Hugging Face ou Ollama. Configurez
+`RAG_PROVIDER`, puis uniquement les variables du fournisseur choisi.
 
 ## Notebooks disponibles
 
@@ -81,8 +81,8 @@ Les exemples RAG utilisent OpenAI. Configurez `OPENAI_API_KEY` et
 - [Chapitre 9 — DocuRAG](chapters/chapitre-09-docurag/09_docurag.ipynb) :
   application modulaire et parcours complet.
 
-Ces notebooks utilisent OpenAI pour les embeddings et la génération. Consultez
-[la configuration OpenAI](docs/openai-mode.md).
+Ces notebooks proposent un sélecteur OpenAI, Hugging Face ou Ollama. Consultez
+[le guide des fournisseurs](docs/model-providers.md).
 
 ## Tests
 

@@ -1,9 +1,23 @@
 # Configuration DocuRAG
 # Copier ces variables dans un fichier .env local non versionné.
 
+# Choisir : openai, huggingface ou ollama
+RAG_PROVIDER=openai
+
+# OpenAI (requis uniquement si RAG_PROVIDER=openai)
 OPENAI_API_KEY=
 OPENAI_MODEL=
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+
+# Hugging Face local/Colab (requis uniquement si RAG_PROVIDER=huggingface)
+HF_EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+HF_GENERATION_MODEL=Qwen/Qwen2.5-0.5B-Instruct
+HF_MAX_NEW_TOKENS=256
+
+# Ollama local (requis uniquement si RAG_PROVIDER=ollama)
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_EMBEDDING_MODEL=embeddinggemma
+OLLAMA_MODEL=qwen3:0.6b
 
 DOCURAG_CHUNK_SIZE=80
 DOCURAG_CHUNK_OVERLAP=15

@@ -1,4 +1,4 @@
-"""Indexation vectorielle de DocuRAG avec les embeddings OpenAI."""
+"""Indexation vectorielle de DocuRAG avec le fournisseur configuré."""
 
 from __future__ import annotations
 
@@ -6,12 +6,12 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from rag_en_pratique.core import Document, InMemoryVectorStore
-from rag_en_pratique.openai_adapter import OpenAIEmbedder
+from rag_en_pratique.providers import create_embedder
 
 
 class Indexeur:
     def __init__(self) -> None:
-        self.store = InMemoryVectorStore(OpenAIEmbedder())
+        self.store = InMemoryVectorStore(create_embedder())
 
     def indexer(self, chunks: Sequence[Document]) -> int:
         self.store.add(chunks)
@@ -25,7 +25,7 @@ def main() -> None:
         for path in sorted((repository / "data" / "sample").glob("*.md"))
         if path.name.lower() != "readme.md"
     ]
-    print(f"{Indexeur().indexer(chunks)} document(s) indexé(s) avec OpenAI")
+    print(f"{Indexeur().indexer(chunks)} document(s) indexé(s)")
 
 
 if __name__ == "__main__":

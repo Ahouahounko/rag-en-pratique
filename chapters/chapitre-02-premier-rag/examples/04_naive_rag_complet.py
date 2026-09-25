@@ -1,4 +1,4 @@
-"""Pipeline RAG complet du chapitre 2, entièrement fondé sur OpenAI."""
+"""Pipeline RAG complet du chapitre 2 avec fournisseur interchangeable."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from rag_en_pratique.core import (
     RAGPipeline,
     split_documents,
 )
-from rag_en_pratique.openai_adapter import OpenAIEmbedder, OpenAIGenerator
+from rag_en_pratique.providers import create_provider
 
 
 def load_documents(directory: Path) -> list[Document]:
@@ -23,9 +23,10 @@ def load_documents(directory: Path) -> list[Document]:
 
 def build_rag(documents_path: Path) -> RAGPipeline:
     chunks = split_documents(load_documents(documents_path), chunk_size=60, overlap=10)
-    store = InMemoryVectorStore(OpenAIEmbedder(model="text-embedding-3-small"))
+    provider = create_provider()
+    store = InMemoryVectorStore(provider.embedder)
     store.add(chunks)
-    return RAGPipeline(store, OpenAIGenerator())
+    return RAGPipeline(store, provider.generator)
 
 
 def main() -> None:

@@ -1,7 +1,8 @@
 # DocuRAG exécutable
 
-Cette implémentation reprend l'architecture du chapitre 9 avec OpenAI pour les
-embeddings et la génération. `OPENAI_API_KEY` et `OPENAI_MODEL` sont requis.
+Cette implémentation reprend l'architecture du chapitre 9 avec un fournisseur
+interchangeable : OpenAI, Hugging Face ou Ollama. Configurez `RAG_PROVIDER` et
+les variables correspondantes décrites dans [`../../../docs/model-providers.md`](../../../docs/model-providers.md).
 
 Depuis la racine du dépôt, utilisez le notebook Colab ou la commande portable :
 
@@ -11,5 +12,5 @@ python chapters/chapitre-09-docurag/runnable/run_docurag.py \
   "Quel est le délai de livraison standard ?"
 ```
 
-DocuRAG utilise la Responses API pour la génération et l'API embeddings pour la
-recherche. Configurez `OPENAI_API_KEY` et `OPENAI_MODEL` avant l'exécution.
+OpenAI utilise ses API distantes, Hugging Face exécute les modèles localement et
+Ollama dialogue avec le serveur local configuré par `OLLAMA_BASE_URL`.

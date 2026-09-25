@@ -11,6 +11,7 @@ from rag_en_pratique.core import (
     split_document,
 )
 from rag_en_pratique.openai_adapter import OpenAIEmbedder, OpenAIGenerator
+from rag_en_pratique.providers import HuggingFaceEmbedder, HuggingFaceGenerator
 
 ROOT = Path(__file__).parents[1]
 
@@ -42,6 +43,19 @@ class FakeOpenAIClient:
         self.responses = FakeResponsesAPI()
 
 
+class FakeEncoder:
+    def encode(self, texts: list[str], *, normalize_embeddings: bool) -> list[list[float]]:
+        assert normalize_embeddings is True
+        return [[float(len(text)), 1.0] for text in texts]
+
+
+class FakeTextPipeline:
+    def __call__(self, messages: list[dict[str, str]], **kwargs: object) -> list[dict[str, object]]:
+        assert messages[0]["role"] == "user"
+        assert kwargs["do_sample"] is False
+        return [{"generated_text": [*messages, {"role": "assistant", "content": "HF simulé [1]."}]}]
+
+
 def test_openai_pipeline_with_injected_client() -> None:
     documents = [
         Document("Les retours sont acceptés pendant 30 jours.", {"source": "retours.md"}),
@@ -62,6 +76,14 @@ def test_generator_builds_grounded_openai_request() -> None:
     generator = OpenAIGenerator("modele-test", client=client)
     passage = SearchResult(Document("Le retour dure 30 jours.", {"source": "retours.md"}), 1.0)
     assert "citation [1]" in generator.generate("Quel délai ?", [passage])
+
+
+def test_huggingface_adapters_accept_injected_models() -> None:
+    embedder = HuggingFaceEmbedder(encoder=FakeEncoder())
+    assert embedder.embed(["bonjour"]) == [[7.0, 1.0]]
+    generator = HuggingFaceGenerator(text_pipeline=FakeTextPipeline())
+    passage = SearchResult(Document("Retour sous 30 jours.", {"source": "retours.md"}), 1.0)
+    assert generator.generate("Quel délai ?", [passage]) == "HF simulé [1]."
 
 
 def test_chunking_preserves_metadata() -> None:

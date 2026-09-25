@@ -36,10 +36,18 @@ def notebook(cells: list[dict[str, object]]) -> dict[str, object]:
     }
 
 
-BOOTSTRAP = f'''from pathlib import Path
-import os
+PROVIDER_SELECTION = '''# @title Choisir le fournisseur de modèles
+PROVIDER = "openai" # @param ["openai", "huggingface", "ollama"]
+PROVIDER = PROVIDER.strip().lower()
+if PROVIDER not in {"openai", "huggingface", "ollama"}:
+    raise ValueError("Choisissez openai, huggingface ou ollama")
+print("Fournisseur choisi :", PROVIDER)
+'''
+
+BOOTSTRAP = f'''import os
 import subprocess
 import sys
+from pathlib import Path
 
 if not Path("src").is_dir():
     if not Path("rag-en-pratique").is_dir():
@@ -47,21 +55,35 @@ if not Path("src").is_dir():
     os.chdir("rag-en-pratique")
 
 sys.path.insert(0, str(Path("src").resolve()))
-subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", "."], check=True)
+extra = {{"openai": "openai", "huggingface": "huggingface", "ollama": None}}[PROVIDER]
+target = f".[{{extra}}]" if extra else "."
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", target], check=True)
 print("Dépôt prêt :", Path.cwd())
 '''
 
-OPENAI_SETUP = '''from getpass import getpass
-import os
+PROVIDER_SETUP = '''import os
+from getpass import getpass
 
-if not os.getenv("OPENAI_API_KEY"):
-    os.environ["OPENAI_API_KEY"] = getpass("OPENAI_API_KEY : ")
-if not os.getenv("OPENAI_MODEL"):
-    os.environ["OPENAI_MODEL"] = input("OPENAI_MODEL : ").strip()
-
-if not os.environ["OPENAI_API_KEY"] or not os.environ["OPENAI_MODEL"]:
-    raise RuntimeError("OPENAI_API_KEY et OPENAI_MODEL sont obligatoires")
-print("Configuration OpenAI chargée.")
+os.environ["RAG_PROVIDER"] = PROVIDER
+if PROVIDER == "openai":
+    if not os.getenv("OPENAI_API_KEY"):
+        os.environ["OPENAI_API_KEY"] = getpass("OPENAI_API_KEY : ")
+    if not os.getenv("OPENAI_MODEL"):
+        os.environ["OPENAI_MODEL"] = input("OPENAI_MODEL : ").strip()
+    if not os.environ["OPENAI_API_KEY"] or not os.environ["OPENAI_MODEL"]:
+        raise RuntimeError("OPENAI_API_KEY et OPENAI_MODEL sont obligatoires")
+elif PROVIDER == "huggingface":
+    os.environ.setdefault(
+        "HF_EMBEDDING_MODEL",
+        "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    )
+    os.environ.setdefault("HF_GENERATION_MODEL", "Qwen/Qwen2.5-0.5B-Instruct")
+else:
+    os.environ.setdefault("OLLAMA_BASE_URL", "http://localhost:11434")
+    os.environ.setdefault("OLLAMA_EMBEDDING_MODEL", "embeddinggemma")
+    os.environ.setdefault("OLLAMA_MODEL", "qwen3:0.6b")
+    print("Ollama doit déjà être démarré et les deux modèles téléchargés.")
+print("Configuration chargée pour", PROVIDER)
 '''
 
 
@@ -75,8 +97,8 @@ def chapter_2() -> dict[str, object]:
             markdown(
                 f"# Chapitre 2 — Construire un premier RAG\n\n"
                 f"[![Ouvrir dans Colab](https://colab.research.google.com/assets/colab-badge.svg)]({badge})\n\n"
-                "Ce notebook met en œuvre ingestion, chunking, embeddings OpenAI, "
-                "retrieval, génération OpenAI et citations."
+                "Ce notebook met en œuvre ingestion, chunking, embeddings, retrieval, "
+                "génération et citations avec OpenAI, Hugging Face ou Ollama."
             ),
             markdown(
                 "## Scripts du chapitre\n\n"
@@ -85,19 +107,27 @@ def chapter_2() -> dict[str, object]:
                 "3. [`03_generator_rag.py`](examples/03_generator_rag.py)\n"
                 "4. [`04_naive_rag_complet.py`](examples/04_naive_rag_complet.py)"
             ),
-            markdown("## 1. Préparer le dépôt\n\nLa cellule fonctionne dans Colab et depuis la racine du dépôt."),
+            markdown(
+                "## 1. Choisir un fournisseur\n\n"
+                "OpenAI et Hugging Face fonctionnent dans Colab. Ollama est prévu pour un "
+                "notebook local relié à un serveur Ollama déjà démarré."
+            ),
+            code(PROVIDER_SELECTION),
+            markdown("## 2. Préparer le dépôt\n\nLa cellule fonctionne dans Colab et depuis la racine du dépôt."),
             code(BOOTSTRAP),
             markdown(
-                "## 2. Configurer OpenAI\n\n"
-                "La clé est saisie de manière masquée et n'est jamais enregistrée dans le notebook."
+                "## 3. Configurer le fournisseur\n\n"
+                "En mode OpenAI, la clé est saisie de manière masquée et n'est jamais enregistrée. "
+                "Hugging Face télécharge les modèles publics au premier lancement."
             ),
-            code(OPENAI_SETUP),
+            code(PROVIDER_SETUP),
             markdown(
-                "## 3. Charger les documents\n\n"
+                "## 4. Charger les documents\n\n"
                 "Correspond à [`01_document_loading.py`](examples/01_document_loading.py)."
             ),
             code(
                 '''from pathlib import Path
+
 from rag_en_pratique.core import Document
 
 data_directory = Path("data/sample")
@@ -109,7 +139,7 @@ documents = [
 [(doc.metadata["source"], len(doc.text)) for doc in documents]
 '''
             ),
-            markdown("## 4. Découper les documents"),
+            markdown("## 5. Découper les documents"),
             code(
                 '''from rag_en_pratique.core import split_documents
 
@@ -119,34 +149,34 @@ chunks[0]
 '''
             ),
             markdown(
-                "## 5. Indexer avec OpenAI et rechercher\n\n"
+                "## 6. Indexer et rechercher\n\n"
                 "Correspond à [`02_pipeline_ingestion.py`](examples/02_pipeline_ingestion.py)."
             ),
             code(
                 '''from rag_en_pratique.core import InMemoryVectorStore
-from rag_en_pratique.openai_adapter import OpenAIEmbedder
+from rag_en_pratique.providers import create_embedder
 
-store = InMemoryVectorStore(OpenAIEmbedder())
+store = InMemoryVectorStore(create_embedder(PROVIDER))
 store.add(chunks)
 results = store.search("Quel est le délai pour retourner un produit ?", top_k=3)
 [(round(item.score, 3), item.document.metadata["source"]) for item in results]
 '''
             ),
             markdown(
-                "## 6. Générer la réponse avec OpenAI\n\n"
+                "## 7. Générer la réponse\n\n"
                 "Correspond à [`03_generator_rag.py`](examples/03_generator_rag.py) et "
                 "[`04_naive_rag_complet.py`](examples/04_naive_rag_complet.py)."
             ),
             code(
                 '''from rag_en_pratique.core import RAGPipeline
-from rag_en_pratique.openai_adapter import OpenAIGenerator
+from rag_en_pratique.providers import create_generator
 
-rag = RAGPipeline(store, OpenAIGenerator())
+rag = RAGPipeline(store, create_generator(PROVIDER))
 response = rag.ask("Sous combien de jours peut-on retourner un produit ?")
 print(response["answer"])
 '''
             ),
-            markdown("## 7. Examiner les sources\n\nUne application RAG doit rendre ses sources inspectables."),
+            markdown("## 8. Examiner les sources\n\nUne application RAG doit rendre ses sources inspectables."),
             code(
                 '''for source in response["sources"]:
     print(source["score"], source["metadata"]["source"])
@@ -174,7 +204,7 @@ def chapter_9() -> dict[str, object]:
                 f"# Chapitre 9 — DocuRAG\n\n"
                 f"[![Ouvrir dans Colab](https://colab.research.google.com/assets/colab-badge.svg)]({badge})\n\n"
                 "DocuRAG organise le pipeline du chapitre 2 en application modulaire "
-                "utilisant OpenAI pour les embeddings et la génération."
+                "compatible avec OpenAI, Hugging Face et Ollama."
             ),
             markdown(
                 "## Scripts et fichiers du chapitre\n\n"
@@ -197,17 +227,23 @@ def chapter_9() -> dict[str, object]:
                 "17. [`17_compose.yml`](examples/17_compose.yml)\n"
                 "18. [`18_demarrage.sh`](examples/18_demarrage.sh)"
             ),
-            markdown("## 1. Préparer le dépôt"),
-            code(BOOTSTRAP),
-            markdown("## 2. Configurer OpenAI"),
-            code(OPENAI_SETUP),
             markdown(
-                "## 3. Charger l'application DocuRAG\n\n"
+                "## 1. Choisir un fournisseur\n\n"
+                "OpenAI et Hugging Face fonctionnent dans Colab. Ollama est destiné à "
+                "l'exécution locale, avec le serveur démarré avant le notebook."
+            ),
+            code(PROVIDER_SELECTION),
+            markdown("## 2. Préparer le dépôt"),
+            code(BOOTSTRAP),
+            markdown("## 3. Configurer le fournisseur"),
+            code(PROVIDER_SETUP),
+            markdown(
+                "## 4. Charger l'application DocuRAG\n\n"
                 "Configuration, chargement et chunking correspondent aux exemples 02 à 06."
             ),
             code(
-                '''from pathlib import Path
-import sys
+                '''import sys
+from pathlib import Path
 
 runnable = Path("chapters/chapitre-09-docurag/runnable").resolve()
 sys.path.insert(0, str(runnable))
@@ -220,8 +256,8 @@ app = DocuRAG(settings)
 '''
             ),
             markdown(
-                "## 4. Ingérer et indexer un dossier\n\n"
-                "Correspond aux exemples 07 et 08. Les embeddings sont calculés par OpenAI."
+                "## 5. Ingérer et indexer un dossier\n\n"
+                "Correspond aux exemples 07 et 08. Le fournisseur choisi calcule les embeddings."
             ),
             code(
                 '''chunk_count = app.ingest(Path("data/sample"))
@@ -229,7 +265,7 @@ print(f"{chunk_count} chunks indexés")
 '''
             ),
             markdown(
-                "## 5. Interroger DocuRAG\n\n"
+                "## 6. Interroger DocuRAG\n\n"
                 "Correspond aux exemples 09 à 13 : retrieval, prompts, génération, schémas et API."
             ),
             code(
@@ -237,7 +273,7 @@ print(f"{chunk_count} chunks indexés")
 print(result["answer"])
 '''
             ),
-            markdown("## 6. Inspecter la traçabilité"),
+            markdown("## 7. Inspecter la traçabilité"),
             code(
                 '''for rank, source in enumerate(result["sources"], start=1):
     print(f"#{rank} score={source['score']} source={source['metadata']['source']}")
@@ -245,14 +281,14 @@ print(result["answer"])
     print()
 '''
             ),
-            markdown("## 7. Tester une question absente des documents"),
+            markdown("## 8. Tester une question absente des documents"),
             code(
                 '''unknown = app.ask("Quel est le numéro de téléphone du directeur ?")
 print(unknown["answer"])
 '''
             ),
             markdown(
-                "## 8. Interface, évaluation et déploiement\n\n"
+                "## 9. Interface, évaluation et déploiement\n\n"
                 "Les exemples 14 à 18 couvrent Streamlit, l'évaluation, Docker, "
                 "Compose et le démarrage.\n\n"
                 "## Architecture\n\n"
