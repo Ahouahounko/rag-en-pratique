@@ -427,6 +427,112 @@ def chapter_5() -> dict[str, object]:
     return notebook(cells)
 
 
+CHAPTER_6_BOOTSTRAP = f'''import os
+import subprocess
+import sys
+from pathlib import Path
+
+if not Path("src").is_dir():
+    if not Path("rag-en-pratique").is_dir():
+        subprocess.run(["git", "clone", "{REPOSITORY_URL}.git"], check=True)
+    os.chdir("rag-en-pratique")
+
+subprocess.run(
+    [sys.executable, "-m", "pip", "install", "-q", "-e", ".[prompting]"],
+    check=True,
+)
+examples_path = Path("chapters/chapitre-06-prompt-engineering/examples").resolve()
+if str(examples_path) not in sys.path:
+    sys.path.insert(0, str(examples_path))
+print("Environnement du chapitre 6 prêt :", Path.cwd())
+'''
+
+CHAPTER_6_OPENAI = '''# @title Activer les exemples OpenAI
+UTILISER_OPENAI = False # @param {type:"boolean"}
+
+if UTILISER_OPENAI:
+    import os
+    import subprocess
+    import sys
+    from getpass import getpass
+
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", ".[openai]"], check=True)
+    if not os.getenv("OPENAI_API_KEY"):
+        os.environ["OPENAI_API_KEY"] = getpass("OPENAI_API_KEY : ")
+    if not os.getenv("OPENAI_MODEL"):
+        os.environ["OPENAI_MODEL"] = input("OPENAI_MODEL : ").strip()
+    print("OpenAI est activé. Les cellules concernées peuvent effectuer un appel API.")
+else:
+    print("OpenAI désactivé. Les formats, garde-fous et tests locaux restent exécutables.")
+'''
+
+
+def chapter_6() -> dict[str, object]:
+    badge = (
+        "https://colab.research.google.com/github/Ahouahounko/rag-en-pratique/"
+        "blob/main/chapters/chapitre-06-prompt-engineering/06_prompt_engineering.ipynb"
+    )
+    examples = ROOT / "chapters/chapitre-06-prompt-engineering/examples"
+    lessons = [
+        ("01_prompt_minimal.py", "Prompt minimal", "Séparer les instructions stables du contexte et de la question."),
+        ("02_format_simple.py", "Format simple", "Attribuer un identifiant de citation à chaque passage."),
+        ("03_format_balise.py", "Format balisé", "Rendre les frontières et métadonnées explicites."),
+        ("04_format_annote.py", "Pertinence qualitative", "Écarter les faibles scores et éviter la fausse précision."),
+        ("05_verif_citations.py", "Validation des citations", "Détecter citations inventées et affirmations orphelines."),
+        ("06_budget_tokens.py", "Budget de tokens", "Réserver la réponse et tronquer seulement un fragment utile."),
+        ("07_cot_rag.py", "Analyse structurée", "Demander les apports vérifiables sans exposer de raisonnement privé."),
+        ("08_step_back.py", "Step-back", "Chercher la règle générale et le cas particulier."),
+        ("09_verification.py", "Vérification d'ancrage", "Contrôler chaque affirmation avec un second passage modèle."),
+        ("10_few_shot.py", "Few-shot", "Montrer un succès et un refus pour enseigner la frontière."),
+        ("11_rag_conversationnel.py", "RAG conversationnel", "Condensation et historique borné explicitement."),
+        ("12_refus.py", "Refus gradué", "Distinguer couverture complète, partielle et absente."),
+        ("13_refus_amont.py", "Refus en amont", "Éviter l'appel au modèle si le retrieval est insuffisant."),
+        ("14_conflits.py", "Contradictions", "Présenter les versions divergentes et leurs dates."),
+        ("15_synthese.py", "Synthèse", "Organiser la réponse par thèmes transversaux."),
+        ("16_injection.py", "Injection indirecte", "Neutraliser les marqueurs et signaler les consignes suspectes."),
+        ("17_regression_prompts.py", "Tests de régression", "Transformer les incidents en cas reproductibles."),
+    ]
+    cells = [
+        markdown(
+            f"# Chapitre 6 — Prompt engineering pour le RAG\n\n"
+            f"[![Ouvrir dans Colab](https://colab.research.google.com/assets/colab-badge.svg)]({badge})\n\n"
+            "Ce notebook regroupe les 17 exemples du chapitre. Les traitements locaux "
+            "fonctionnent sans clé ; les appels OpenAI sont désactivés par défaut."
+        ),
+        markdown(
+            "## Ressources utiles\n\n"
+            "- [OpenAI Docs — Prompt engineering](https://developers.openai.com/api/docs/guides/prompt-engineering)\n"
+            "- [OpenAI Docs — Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)\n"
+            "- [OpenAI Docs — Bonnes pratiques de sécurité](https://developers.openai.com/api/docs/guides/safety-best-practices)\n"
+            "- [tiktoken](https://github.com/openai/tiktoken)"
+        ),
+        markdown("## 0. Préparer Colab ou Jupyter"),
+        code(CHAPTER_6_BOOTSTRAP),
+        markdown("## Configuration OpenAI facultative\n\nLa clé est saisie de manière masquée et reste en mémoire."),
+        code(CHAPTER_6_OPENAI),
+    ]
+    for index, (filename, title, explanation) in enumerate(lessons, start=1):
+        source = (examples / filename).read_text(encoding="utf-8")
+        cells.extend(
+            [
+                markdown(
+                    f"## {index}. {title}\n\n{explanation}\n\n"
+                    f"Script correspondant : [`{filename}`](examples/{filename})"
+                ),
+                code("# ruff: noqa: F811\n" + source),
+            ]
+        )
+    cells.append(
+        markdown(
+            "## Bilan\n\n"
+            "Un bon prompt RAG ne remplace ni le retrieval ni l'évaluation. Il rend le contrat "
+            "de réponse explicite, protège les frontières entre instructions et données, puis "
+            "s'accompagne de validations déterministes et d'un jeu de régression."
+        )
+    )
+    return notebook(cells)
+
+
 def chapter_2() -> dict[str, object]:
     badge = (
         "https://colab.research.google.com/github/Ahouahounko/rag-en-pratique/"
@@ -660,6 +766,10 @@ def main() -> None:
     write(
         ROOT / "chapters/chapitre-05-bases-vectorielles/05_bases_vectorielles.ipynb",
         chapter_5(),
+    )
+    write(
+        ROOT / "chapters/chapitre-06-prompt-engineering/06_prompt_engineering.ipynb",
+        chapter_6(),
     )
     write(ROOT / "chapters/chapitre-09-docurag/09_docurag.ipynb", chapter_9())
 

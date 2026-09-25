@@ -1,30 +1,28 @@
-PROMPT_RAISONNEMENT = ChatPromptTemplate.from_messages([
-    ("system", """Tu es un analyste documentaire.
+"""Produire une analyse documentaire structurée sans exposer un raisonnement caché."""
 
-Structure ta reponse EXACTEMENT selon ces quatre sections :
+from __future__ import annotations
 
-<analyse>
-Pour chaque extrait pertinent, indique ce qu'il apporte a la
-question. Ignore explicitement les extraits hors sujet.
-</analyse>
+from rag_en_pratique.prompting import generer, openai_configure
 
-<deduction>
-Ce que l'on peut conclure en combinant les extraits retenus.
-Distingue ce qui est ecrit noir sur blanc de ce qui est deduit.
-</deduction>
+INSTRUCTIONS = """Tu es un analyste documentaire. Appuie-toi exclusivement sur les extraits.
+Structure la sortie en quatre sections :
+<apports>faits utiles de chaque extrait avec citations</apports>
+<conclusion>conclusion étayée, sans raisonnement privé</conclusion>
+<reponse>réponse finale en trois phrases maximum</reponse>
+<limites>informations que les extraits ne permettent pas d'établir</limites>"""
 
-<reponse>
-La reponse finale, en trois phrases au maximum.
-</reponse>
 
-<limites>
-Ce que les extraits ne permettent pas d'etablir.
-</limites>
+def analyser(contexte: str, question: str, *, client=None, model: str | None = None) -> str:
+    return generer(
+        INSTRUCTIONS,
+        f"EXTRAITS :\n{contexte}\n\nQUESTION : {question}",
+        client=client,
+        model=model,
+    )
 
-Tes conclusions s'appuient exclusivement sur les extraits."""),
 
-    ("human", """EXTRAITS :
-{contexte}
-
-QUESTION : {question}"""),
-])
+if __name__ == "__main__":
+    if openai_configure():
+        print(analyser("[doc_1] Garantie de 24 mois.", "Quelle garantie ?"))
+    else:
+        print(INSTRUCTIONS)

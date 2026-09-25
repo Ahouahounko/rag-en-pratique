@@ -1,21 +1,10 @@
-def formater_simple(passages: list) -> str:
-    """Assemble les passages avec un en-tete et un separateur.
+"""Formater un contexte RAG compact, lisible et traçable."""
 
-    L'identifiant doc_N est GENERE ICI et devra etre conserve
-    par l'application : c'est lui qui permettra de retrouver
-    la source quand le modele la citera.
-    """
-    blocs = []
+from rag_en_pratique.prompting import Passage, formater_simple
 
-    for numero, passage in enumerate(passages, start=1):
-        source = passage.metadata.get("source", "document inconnu")
-        page = passage.metadata.get("page", "?")
-
-        blocs.append(
-            f"[doc_{numero}] {source}, page {page}\n"
-            f"{passage.page_content}"
-        )
-
-    # Un separateur VISIBLE : sans lui, deux passages successifs
-    # se lisent comme un texte continu.
-    return "\n\n---\n\n".join(blocs)
+if __name__ == "__main__":
+    passages = [
+        Passage("La garantie couvre 24 mois.", {"source": "cgv.pdf", "page": 8}),
+        Passage("Le retour est possible sous 30 jours.", {"source": "retours.md", "page": 1}),
+    ]
+    print(formater_simple(passages))

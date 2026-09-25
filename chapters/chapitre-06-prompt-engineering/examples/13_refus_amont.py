@@ -1,34 +1,41 @@
-def repondre_avec_garde_fou(question: str, retriever, modele,
-                            seuil_minimal: float = 0.35) -> dict:
-    """Coupe court si aucun extrait n'est suffisamment pertinent.
+"""Refuser avant génération quand aucun passage n'est assez pertinent."""
 
-    Le refus le plus fiable n'est pas celui que le modele decide :
-    c'est celui que l'application impose avant de l'appeler.
-    """
-    passages = retriever.invoke(question)
+from __future__ import annotations
 
-    if not passages:
-        return {"reponse": "Les documents fournis ne permettent pas "
-                           "de repondre a cette question.",
-                "confiance": "nulle", "sources": []}
+from rag_en_pratique.prompting import formater_simple, generer, openai_configure
 
-    meilleur = max(p.metadata.get("score_reclassement", 0.0)
-                   for p in passages)
+REFUS = "Les documents fournis ne permettent pas de répondre à cette question."
 
+
+def repondre_avec_garde_fou(
+    question: str,
+    retriever,
+    seuil_minimal: float = 0.35,
+    *,
+    client=None,
+    model: str | None = None,
+) -> dict[str, object]:
+    passages = list(retriever.invoke(question))
+    meilleur = max(
+        (passage.metadata.get("score_reclassement", 0.0) for passage in passages),
+        default=0.0,
+    )
     if meilleur < seuil_minimal:
-        # On n'appelle meme pas le modele : economie et surete.
-        return {"reponse": "Les documents fournis ne permettent pas "
-                           "de repondre a cette question.",
-                "confiance": "nulle", "sources": []}
+        return {"reponse": REFUS, "confiance": "nulle", "sources": [], "modele_appele": False}
+    reponse = generer(
+        "Réponds uniquement avec les extraits et cite chaque affirmation.",
+        f"EXTRAITS :\n{formater_simple(passages)}\n\nQUESTION : {question}",
+        client=client,
+        model=model,
+    )
+    confiance = "élevée" if meilleur > 0.7 else "moyenne" if meilleur > 0.5 else "faible"
+    return {
+        "reponse": reponse,
+        "confiance": confiance,
+        "sources": passages,
+        "modele_appele": True,
+    }
 
-    reponse = (PROMPT_REFUS | modele).invoke({
-        "contexte": formater_simple(passages),
-        "question": question,
-    }).content
 
-    confiance = ("elevee" if meilleur > 0.7
-                 else "moyenne" if meilleur > 0.5
-                 else "faible")
-
-    return {"reponse": reponse, "confiance": confiance,
-            "sources": passages}
+if __name__ == "__main__" and not openai_configure():
+    print("Le garde-fou peut refuser sans configurer OpenAI.")

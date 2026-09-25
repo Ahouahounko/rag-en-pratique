@@ -120,6 +120,7 @@ def test_notebooks_are_clean_colab_notebooks() -> None:
         ROOT / "chapters/chapitre-03-donnees-et-chunking/03_donnees_et_chunking.ipynb",
         ROOT / "chapters/chapitre-04-retrieval-avance/04_retrieval_avance.ipynb",
         ROOT / "chapters/chapitre-05-bases-vectorielles/05_bases_vectorielles.ipynb",
+        ROOT / "chapters/chapitre-06-prompt-engineering/06_prompt_engineering.ipynb",
         ROOT / "chapters/chapitre-09-docurag/09_docurag.ipynb",
     ]
     for path in paths:

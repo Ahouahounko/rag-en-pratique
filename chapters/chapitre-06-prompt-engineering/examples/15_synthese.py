@@ -1,29 +1,36 @@
-PROMPT_SYNTHESE = ChatPromptTemplate.from_messages([
-    ("system", """Tu produis des syntheses documentaires.
+"""Produire une synthèse organisée par thèmes plutôt que par documents."""
 
-METHODE :
-1. Identifie les themes qui traversent les extraits.
-2. Organise ta reponse PAR THEME, jamais par document. Un
-   paragraphe par document est un catalogue, pas une synthese.
-3. Sous chaque theme, rassemble les apports des differents
-   extraits en citant chacun.
-4. Ne repete pas une information presente dans plusieurs
-   extraits : cite-les ensemble, par exemple [doc_1, doc_3].
-5. Termine par les points que les extraits ne permettent pas
-   de trancher.
+from __future__ import annotations
 
-STRUCTURE ATTENDUE :
+from rag_en_pratique.prompting import generer, openai_configure
 
-**Synthese**
-[Themes, avec les sources sous chaque affirmation]
+INSTRUCTIONS_SYNTHESE = """Produis une synthèse documentaire.
+1. Identifie les thèmes transversaux.
+2. Organise la réponse par thème, jamais par document.
+3. Rassemble les apports en citant chaque source.
+4. Ne répète pas une information commune : regroupe ses citations.
+5. Termine par « Points non couverts ».
+Structure : **Synthèse**, puis **Points non couverts**."""
 
-**Points non couverts**
-[Ce qui reste indetermine]"""),
 
-    ("human", """EXTRAITS ({nb_extraits} sources) :
-{contexte}
+def synthetiser(
+    contexte: str,
+    question: str,
+    nb_extraits: int,
+    *,
+    client=None,
+    model: str | None = None,
+) -> str:
+    return generer(
+        INSTRUCTIONS_SYNTHESE,
+        f"EXTRAITS ({nb_extraits} sources) :\n{contexte}\n\nQUESTION : {question}",
+        client=client,
+        model=model,
+    )
 
-QUESTION : {question}
 
-SYNTHESE :"""),
-])
+if __name__ == "__main__":
+    if openai_configure():
+        print(synthetiser("[doc_1] Retour 30 jours.", "Résume la politique.", 1))
+    else:
+        print(INSTRUCTIONS_SYNTHESE)

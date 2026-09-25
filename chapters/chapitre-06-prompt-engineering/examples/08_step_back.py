@@ -1,35 +1,36 @@
-def rag_step_back(question: str, retriever, modele) -> str:
-    """Cherche la regle generale avant de traiter le cas precis."""
+"""Rechercher le principe général avant d'appliquer la règle au cas particulier."""
 
-    # --- 1. Formuler la question de recul ---
-    generale = modele.invoke(f"""
-Formule la question generale dont la reponse permettrait de
-trancher le cas particulier ci-dessous. Vise la regle, la
-politique ou le principe applicable, pas le cas lui-meme.
+from __future__ import annotations
 
-Cas particulier : {question}
+from rag_en_pratique.prompting import Passage, formater_simple, generer, openai_configure
 
-Question generale :""").content.strip()
 
-    # --- 2. Chercher pour les DEUX questions ---
-    # La question specifique ramene les documents proches du cas ;
-    # la generale ramene la regle. On a besoin des deux.
-    specifiques = retriever.invoke(question)
-    generaux = retriever.invoke(generale)
+def rag_step_back(
+    question: str,
+    retriever,
+    *,
+    client=None,
+    model: str | None = None,
+) -> str:
+    generale = generer(
+        "Formule une question générale visant la règle applicable. Ne réponds pas au cas.",
+        f"Cas particulier : {question}",
+        client=client,
+        model=model,
+    )
+    specifiques = list(retriever.invoke(question))
+    generaux = list(retriever.invoke(generale))
+    textes_vus = {passage.page_content for passage in specifiques}
+    tous: list[Passage] = specifiques + [
+        passage for passage in generaux if passage.page_content not in textes_vus
+    ]
+    return generer(
+        "Réponds à partir des extraits. Énonce la règle générale, puis son application. Cite.",
+        f"EXTRAITS :\n{formater_simple(tous)}\n\nPRINCIPE : {generale}\nQUESTION : {question}",
+        client=client,
+        model=model,
+    )
 
-    vus = {p.page_content for p in specifiques}
-    tous = specifiques + [p for p in generaux
-                          if p.page_content not in vus]
 
-    # --- 3. Repondre en explicitant la regle mobilisee ---
-    contexte = formater_simple(tous)
-
-    return modele.invoke(f"""EXTRAITS :
-{contexte}
-
-Principe general recherche : {generale}
-Question posee : {question}
-
-Reponds a la question posee. Enonce d'abord la regle generale
-applicable, puis son application au cas. Cite tes sources.
-""").content
+if __name__ == "__main__" and not openai_configure():
+    print("Exemple prêt : configurez OPENAI_API_KEY et OPENAI_MODEL.")

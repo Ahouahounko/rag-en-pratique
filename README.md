@@ -84,6 +84,8 @@ Les exemples RAG acceptent OpenAI, Hugging Face ou Ollama. Configurez
   réécriture, expansion, HyDE, recherche hybride, reranking, MMR et compression ;
 - [Chapitre 5 — Bases vectorielles](chapters/chapitre-05-bases-vectorielles/05_bases_vectorielles.ipynb) :
   FAISS, Qdrant, Chroma, Pinecone et architectures de retrieval ;
+- [Chapitre 6 — Prompt engineering](chapters/chapitre-06-prompt-engineering/06_prompt_engineering.ipynb) :
+  contexte, citations, refus, conversation, synthèse et tests de régression ;
 - [Chapitre 9 — DocuRAG](chapters/chapitre-09-docurag/09_docurag.ipynb) :
   application modulaire et parcours complet.
 

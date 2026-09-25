@@ -1,32 +1,46 @@
-# Deux exemples suffisent, a condition de choisir le BON couple :
-# un cas nominal et un cas de refus. C'est ce contraste qui
-# enseigne la frontiere entre les deux comportements.
-PROMPT_AVEC_EXEMPLES = ChatPromptTemplate.from_messages([
-    ("system", SYSTEME),
+"""Ajouter un exemple nominal et un exemple de refus au prompt RAG."""
 
-    # --- Demonstration 1 : information presente ---
-    ("human", """EXTRAITS :
-[doc_1] cgv.pdf, page 8
-La garantie couvre 24 mois a compter de la date d'achat.
+from __future__ import annotations
 
-QUESTION : Quelle est la duree de la garantie ?"""),
-    ("ai", "La garantie couvre 24 mois a compter de la date "
-           "d'achat [doc_1].\n\nSources : doc_1"),
+from rag_en_pratique.prompting import generer, openai_configure
 
-    # --- Demonstration 2 : information absente ---
-    ("human", """EXTRAITS :
-[doc_1] cgv.pdf, page 8
-La garantie couvre 24 mois a compter de la date d'achat.
+SYSTEME = "Réponds exclusivement avec les extraits et cite chaque affirmation au format [doc_N]."
 
-QUESTION : La garantie est-elle transferable a un tiers ?"""),
-    ("ai", "Les documents fournis ne permettent pas de repondre "
-           "a cette question. L'extrait disponible precise la "
-           "duree de la garantie [doc_1] mais n'aborde pas sa "
-           "transmission."),
 
-    # --- Cas reel ---
-    ("human", """EXTRAITS :
-{contexte}
+def construire_messages(contexte: str, question: str) -> list[dict[str, str]]:
+    return [
+        {
+            "role": "user",
+            "content": "EXTRAIT: [doc_1] Garantie 24 mois. QUESTION: Quelle durée ?",
+        },
+        {"role": "assistant", "content": "La garantie couvre 24 mois [doc_1]."},
+        {
+            "role": "user",
+            "content": "EXTRAIT: [doc_1] Garantie 24 mois. QUESTION: Est-elle transférable ?",
+        },
+        {
+            "role": "assistant",
+            "content": "Les documents fournis ne permettent pas de répondre à cette question.",
+        },
+        {"role": "user", "content": f"EXTRAITS :\n{contexte}\n\nQUESTION : {question}"},
+    ]
 
-QUESTION : {question}"""),
-])
+
+def repondre_few_shot(
+    contexte: str,
+    question: str,
+    *,
+    client=None,
+    model: str | None = None,
+) -> str:
+    return generer(
+        SYSTEME,
+        construire_messages(contexte, question),
+        client=client,
+        model=model,
+    )
+
+
+if __name__ == "__main__":
+    messages = construire_messages("[doc_1] Retour sous 30 jours.", "Quel délai ?")
+    print(repondre_few_shot(messages[-1]["content"], "Quel délai ?") if openai_configure() else messages)

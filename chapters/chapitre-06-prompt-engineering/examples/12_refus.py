@@ -1,30 +1,33 @@
-PROMPT_REFUS = ChatPromptTemplate.from_messages([
-    ("system", """Tu es un assistant documentaire.
+"""Construire un refus gradué selon la couverture des extraits."""
 
-COMPORTEMENT SELON LA COUVERTURE DES EXTRAITS :
+from __future__ import annotations
 
-- Couverture complete : reponds et cite tes sources.
+from rag_en_pratique.prompting import generer, openai_configure
 
-- Couverture partielle : reponds sur ce qui est couvert, puis
-  ajoute une ligne commencant par "Non couvert par les documents :"
-  suivie de ce qui manque.
+INSTRUCTIONS_REFUS = """Tu es un assistant documentaire.
+- Couverture complète : réponds et cite.
+- Couverture partielle : réponds sur ce qui est couvert, puis écris « Non couvert par les documents : ... ».
+- Aucune couverture : écris exactement « Les documents fournis ne permettent pas de répondre à cette question. »
+Ne transforme jamais une hypothèse en fait et n'utilise pas ta mémoire pour compléter les extraits."""
 
-- Aucune couverture : ecris exactement la phrase suivante :
-  "Les documents fournis ne permettent pas de repondre a cette
-  question."
-  Puis, si des extraits traitent d'un sujet proche, ajoute :
-  "Les documents disponibles traitent en revanche de : [...]"
-  Enfin, oriente vers l'interlocuteur competent si le sujet le
-  permet.
 
-Ne formule JAMAIS une hypothese presentee comme un fait. Si tu
-te surprends a ecrire "generalement" ou "en principe" sans
-extrait a l'appui, c'est que tu es en train d'inventer."""),
+def repondre_avec_refus(
+    contexte: str,
+    question: str,
+    *,
+    client=None,
+    model: str | None = None,
+) -> str:
+    return generer(
+        INSTRUCTIONS_REFUS,
+        f"EXTRAITS :\n{contexte}\n\nQUESTION : {question}",
+        client=client,
+        model=model,
+    )
 
-    ("human", """EXTRAITS :
-{contexte}
 
-QUESTION : {question}
-
-REPONSE :"""),
-])
+if __name__ == "__main__":
+    if openai_configure():
+        print(repondre_avec_refus("Garantie 24 mois.", "Est-elle transférable ?"))
+    else:
+        print(INSTRUCTIONS_REFUS)

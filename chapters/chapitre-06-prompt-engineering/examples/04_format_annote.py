@@ -1,36 +1,33 @@
-def formater_avec_pertinence(passages: list, scores: list,
-                             seuil: float = 0.5) -> str:
-    """Annonce au modele la fiabilite relative de chaque extrait.
+"""Filtrer et annoter les passages selon leur pertinence."""
 
-    Les scores bruts sont volontairement convertis en trois
-    niveaux : un ecart de 0.02 n'a aucune signification, mais
-    le modele le traiterait comme un classement.
-    """
+from __future__ import annotations
+
+from rag_en_pratique.prompting import Passage
+
+
+def formater_avec_pertinence(
+    passages: list[Passage],
+    scores: list[float],
+    seuil: float = 0.5,
+) -> str:
+    if len(passages) != len(scores):
+        raise ValueError("Un score est requis pour chaque passage")
     blocs = []
-
-    for passage, score in zip(passages, scores):
+    for passage, score in zip(passages, scores, strict=True):
         if score < seuil:
-            continue                    # sous le seuil : on ecarte
-
+            continue
         if score >= 0.85:
             niveau = "correspondance forte"
         elif score >= 0.70:
             niveau = "correspondance moyenne"
         else:
-            niveau = "correspondance faible - a confirmer"
-
+            niveau = "correspondance faible — à confirmer"
         numero = len(blocs) + 1
         source = passage.metadata.get("source", "inconnu")
+        blocs.append(f"[doc_{numero}] {source} ({niveau})\n{passage.page_content}")
+    return "\n\n---\n\n".join(blocs) or "Aucun extrait ne dépasse le seuil de pertinence."
 
-        blocs.append(
-            f"[doc_{numero}] {source} ({niveau})\n"
-            f"{passage.page_content}"
-        )
 
-    if not blocs:
-        # Cas important : mieux vaut le dire explicitement au
-        # modele que lui envoyer un contexte vide, qu'il
-        # comblerait avec sa memoire.
-        return "Aucun extrait ne depasse le seuil de pertinence."
-
-    return "\n\n---\n\n".join(blocs)
+if __name__ == "__main__":
+    passages = [Passage("Retour sous 30 jours.", {"source": "cgv.pdf"})]
+    print(formater_avec_pertinence(passages, [0.91]))

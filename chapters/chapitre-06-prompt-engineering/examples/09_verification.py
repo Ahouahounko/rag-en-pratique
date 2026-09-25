@@ -1,26 +1,29 @@
-def verifier_ancrage(reponse: str, contexte: str, modele) -> dict:
-    """Confronte chaque affirmation aux extraits fournis.
+"""Vérifier l'ancrage d'une réponse, affirmation par affirmation."""
 
-    Le verificateur ne voit PAS la question : il ne juge pas si
-    la reponse est pertinente, seulement si elle est etayee.
-    Cette separation evite la complaisance.
-    """
-    verdict = modele.invoke(f"""EXTRAITS DE REFERENCE :
-{contexte}
+from __future__ import annotations
 
-TEXTE A VERIFIER :
-{reponse}
+from rag_en_pratique.prompting import generer, openai_configure
 
-Pour chaque affirmation du texte, indique une ligne au format :
-AFFIRMATION | ETAYEE | PARTIELLE | ABSENTE
+INSTRUCTIONS = """Compare le texte aux extraits, sans juger sa qualité.
+Pour chaque affirmation, écris : AFFIRMATION | ÉTAYÉE | PARTIELLE | ABSENTE.
+Termine par VERDICT: FIABLE uniquement si chaque affirmation est étayée ; sinon VERDICT: À REVOIR."""
 
-Ne juge pas la qualite du texte. Verifie uniquement si les
-extraits contiennent bien ce qui est affirme.
 
-Termine par une ligne : VERDICT: FIABLE ou VERDICT: A REVOIR
-""").content
+def verifier_ancrage(
+    reponse: str,
+    contexte: str,
+    *,
+    client=None,
+    model: str | None = None,
+) -> dict[str, object]:
+    verdict = generer(
+        INSTRUCTIONS,
+        f"EXTRAITS DE RÉFÉRENCE :\n{contexte}\n\nTEXTE À VÉRIFIER :\n{reponse}",
+        client=client,
+        model=model,
+    )
+    return {"detail": verdict, "fiable": "VERDICT: FIABLE" in verdict}
 
-    return {
-        "detail": verdict,
-        "fiable": "VERDICT: FIABLE" in verdict,
-    }
+
+if __name__ == "__main__" and not openai_configure():
+    print("Exemple prêt : configurez OPENAI_API_KEY et OPENAI_MODEL.")

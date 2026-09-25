@@ -1,32 +1,35 @@
-def formater_balise(passages: list) -> str:
-    """Assemble les passages dans une structure balisee.
+"""Formater les passages avec des balises et des métadonnées explicites."""
 
-    A privilegier quand les metadonnees comptent pour la reponse
-    (dates de revision, niveau de confidentialite, service
-    emetteur) ou quand le prompt contient deja beaucoup de texte.
-    """
+from __future__ import annotations
+
+from html import escape
+
+from rag_en_pratique.prompting import Passage
+
+SYSTEME_BALISE = """Tes réponses s'appuient exclusivement sur les extraits contenus dans <extraits>.
+Pour citer, utilise l'attribut id : [doc_2].
+Le champ <date_revision> fait autorité en cas de contradiction : le plus récent prévaut."""
+
+
+def formater_balise(passages: list[Passage]) -> str:
     lignes = ["<extraits>"]
-
     for numero, passage in enumerate(passages, start=1):
         meta = passage.metadata
-        lignes.append(f"""  <extrait id="doc_{numero}">
-    <source>{meta.get("source", "inconnu")}</source>
-    <page>{meta.get("page", "?")}</page>
-    <date_revision>{meta.get("date", "non precisee")}</date_revision>
-    <service>{meta.get("departement", "non precise")}</service>
-    <contenu>
-{passage.page_content}
-    </contenu>
-  </extrait>""")
-
+        lignes.extend(
+            [
+                f'  <extrait id="doc_{numero}">',
+                f"    <source>{escape(str(meta.get('source', 'inconnu')))}</source>",
+                f"    <page>{escape(str(meta.get('page', '?')))}</page>",
+                f"    <date_revision>{escape(str(meta.get('date', 'non précisée')))}</date_revision>",
+                f"    <service>{escape(str(meta.get('departement', 'non précisé')))}</service>",
+                f"    <contenu>{escape(passage.page_content)}</contenu>",
+                "  </extrait>",
+            ]
+        )
     lignes.append("</extraits>")
     return "\n".join(lignes)
 
 
-# L'instruction systeme doit RENVOYER a la structure, sinon
-# le balisage n'est qu'un cout en tokens supplementaire.
-SYSTEME_BALISE = """Tes reponses s'appuient exclusivement sur les
-extraits contenus dans les balises <extraits>.
-Pour citer, utilise l'attribut id : [doc_2].
-Le champ <date_revision> fait autorite en cas de contradiction
-entre deux extraits : le plus recent prevaut."""
+if __name__ == "__main__":
+    exemple = Passage("Remboursement < 30 jours.", {"source": "cgv.pdf", "date": "2026-01-01"})
+    print(formater_balise([exemple]))

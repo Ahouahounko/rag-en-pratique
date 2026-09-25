@@ -1,57 +1,46 @@
-from langchain.memory import ConversationSummaryBufferMemory
-from langchain.chains import ConversationalRetrievalChain
-from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
+"""RAG conversationnel avec condensation et historique explicitement borné."""
+
+from __future__ import annotations
+
+from collections import deque
+from dataclasses import dataclass, field
+
+from rag_en_pratique.prompting import formater_simple, generer, openai_configure
 
 
-def construire_rag_conversationnel(base_vectorielle,
-                                   plafond_historique: int = 2000):
-    """RAG multi-tours dont l'historique ne peut pas exploser.
+@dataclass
+class RAGConversationnel:
+    retriever: object
+    client: object | None = None
+    model: str | None = None
+    max_tours: int = 4
+    historique: deque[tuple[str, str]] = field(default_factory=deque)
 
-    plafond_historique : au-dela, les tours les plus anciens sont
-    automatiquement condenses en resume. C'est une BORNE, pas une
-    cible : la memoire reste en dessous.
-    """
-    modele = ChatOpenAI(model="gpt-4o", temperature=0)
+    def question_autonome(self, question: str) -> str:
+        if not self.historique:
+            return question
+        histoire = "\n".join(f"U: {q}\nA: {r}" for q, r in self.historique)
+        return generer(
+            "Reformule la question en question autonome. Ne réponds pas.",
+            f"HISTORIQUE :\n{histoire}\n\nQUESTION : {question}",
+            client=self.client,
+            model=self.model,
+        )
 
-    memoire = ConversationSummaryBufferMemory(
-        llm=ChatOpenAI(model="gpt-4o-mini", temperature=0),  # leger
-        max_token_limit=plafond_historique,
-        memory_key="chat_history",
-        return_messages=True,
-        output_key="answer",
-    )
+    def demander(self, question: str) -> dict[str, object]:
+        autonome = self.question_autonome(question)
+        passages = list(self.retriever.invoke(autonome))
+        reponse = generer(
+            "Réponds uniquement avec les extraits. Cite chaque affirmation avec [doc_N].",
+            f"EXTRAITS :\n{formater_simple(passages)}\n\nQUESTION : {autonome}",
+            client=self.client,
+            model=self.model,
+        )
+        self.historique.append((question, reponse))
+        while len(self.historique) > self.max_tours:
+            self.historique.popleft()
+        return {"reponse": reponse, "question_autonome": autonome, "sources": passages}
 
-    # Etape 1 : rendre la question autonome grace a l'historique.
-    PROMPT_CONDENSATION = ChatPromptTemplate.from_messages([
-        ("system", """Reformule la question en une question autonome,
-en resolvant les references a l'aide de l'historique.
-Si la question est deja autonome, retourne-la inchangee.
-Ne reponds pas a la question."""),
-        ("human", """Historique :
-{chat_history}
 
-Question : {question}
-
-Question autonome :"""),
-    ])
-
-    # Etape 2 : repondre a partir des extraits seuls.
-    PROMPT_REPONSE = ChatPromptTemplate.from_messages([
-        ("system", SYSTEME),
-        ("human", """EXTRAITS :
-{context}
-
-QUESTION : {question}
-
-REPONSE :"""),
-    ])
-
-    return ConversationalRetrievalChain.from_llm(
-        llm=modele,
-        retriever=base_vectorielle.as_retriever(search_kwargs={"k": 4}),
-        memory=memoire,
-        condense_question_prompt=PROMPT_CONDENSATION,
-        combine_docs_chain_kwargs={"prompt": PROMPT_REPONSE},
-        return_source_documents=True,
-    )
+if __name__ == "__main__" and not openai_configure():
+    print("Exemple prêt : configurez OPENAI_API_KEY et OPENAI_MODEL.")
