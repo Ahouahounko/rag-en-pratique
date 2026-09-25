@@ -1,0 +1,27 @@
+FONCTION chunking_par_accumulation(segments, seuil) :
+
+    chunks       = []
+    chunk_courant = [segments[0]]
+    vecteur_ref   = vectoriser(segments[0])   # identite du chunk en cours
+
+    POUR CHAQUE segment DANS segments[1:] :
+
+        v = vectoriser(segment)
+        similarite = cosinus(vecteur_ref, v)
+
+        SI similarite >= seuil ALORS
+            # meme sujet : on absorbe et on met a jour l'identite
+            chunk_courant.ajouter(segment)
+            vecteur_ref = moyenne_des_vecteurs(chunk_courant)
+        SINON
+            # chute brutale : le chunk courant est termine
+            chunks.ajouter(assembler(chunk_courant))
+            chunk_courant = [segment]
+            vecteur_ref   = v
+        FIN SI
+
+    FIN POUR
+
+    chunks.ajouter(assembler(chunk_courant))
+    RETOURNER chunks
+FIN FONCTION

@@ -83,8 +83,11 @@ pytest
 
 ## Statut
 
-Structure initiale en cours de préparation. Les 111 blocs de code du manuscrit
-seront inventoriés, extraits, rendus exécutables et testés progressivement.
+Les **111 blocs de code** du manuscrit sont désormais extraits et classés par
+chapitre. Parmi eux, 96 exemples Python passent une première validation
+syntaxique ; les 15 autres blocs correspondent à des commandes, configurations
+ou prompts à valider manuellement. Consultez le
+[catalogue du code](docs/code-inventory.md) pour accéder aux inventaires.
 
 ## Droits
 

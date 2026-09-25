@@ -1,0 +1,42 @@
+FONCTION repondre(question, historique) :
+
+    # --- AVANT : reparer la requete -------------------------
+    SI mode_conversationnel ALORS
+        question <- reecrire(question, historique)
+        journaliser(question)          # indispensable au debogage
+    FIN SI
+
+    SI vocabulaire_tres_variable ALORS
+        requetes <- [question] + variantes(question)
+    SINON
+        requetes <- [question]
+    FIN SI
+
+    # --- PENDANT : chercher ---------------------------------
+    listes <- liste vide
+    POUR CHAQUE r DANS requetes :
+        listes.ajouter( recherche_dense(r, k=20) )
+        SI corpus_contient_references_exactes ALORS
+            listes.ajouter( recherche_bm25(r, k=20) )
+        FIN SI
+    FIN POUR
+
+    candidats <- fusion_rrf(listes)[:30]
+
+    # --- APRES : raffiner -----------------------------------
+    candidats <- reclasser(question, candidats)      # cross-encoder
+    candidats <- filtrer_sous_seuil(candidats, seuil=0.2)
+
+    SI candidats est vide ALORS
+        RETOURNER "Aucun element pertinent trouve."   # abstention
+    FIN SI
+
+    SI question_exploratoire ALORS
+        candidats <- mmr(candidats, k=5, lambda=0.6)
+    SINON
+        candidats <- candidats[:5]
+    FIN SI
+
+    contexte <- reordonner_en_V(candidats)
+    RETOURNER generer(question, contexte)
+FIN FONCTION

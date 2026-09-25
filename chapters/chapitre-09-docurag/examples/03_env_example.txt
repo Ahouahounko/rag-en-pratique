@@ -1,0 +1,31 @@
+# .env.example
+# Copier en .env, puis remplir. Le fichier .env ne doit JAMAIS
+# etre versionne : verifiez qu'il figure bien dans .gitignore.
+
+# --- Modele de generation ---
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-4o
+OPENAI_API_KEY=              # a remplir localement
+
+# --- Embeddings ---
+EMBEDDING_MODEL=BAAI/bge-m3
+EMBEDDING_DEVICE=cpu         # cuda si vous avez un GPU
+
+# --- Base vectorielle ---
+# En local : localhost. Dans docker-compose : le NOM DU SERVICE.
+QDRANT_URL=http://localhost:6333
+QDRANT_COLLECTION=docurag_documents
+
+# --- Decoupage ---
+CHUNK_SIZE=512
+CHUNK_OVERLAP=64
+
+# --- Retrieval ---
+RETRIEVAL_INITIAL_K=20
+RETRIEVAL_FINAL_K=5
+USE_HYBRID_SEARCH=true
+USE_RERANKING=true
+
+# --- Application ---
+DOCUMENTS_PATH=./documents
+LOG_LEVEL=INFO

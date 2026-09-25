@@ -1,0 +1,58 @@
+# docker/docker-compose.yml
+services:
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: docurag-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      # SANS ce volume, l'index disparait a chaque redemarrage
+      # et il faut tout reindexer. C'est la ligne qu'on oublie.
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: docurag-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env
+    environment:
+      # Dans le reseau Docker, "localhost" designe le conteneur
+      # lui-meme. Il faut le NOM DU SERVICE. C'est la cause
+      # numero un des echecs de premier demarrage.
+      QDRANT_URL: http://qdrant:6333
+    volumes:
+      - ../documents:/app/documents:ro    # lecture seule
+    depends_on:
+      qdrant:
+        condition: service_healthy        # attend que Qdrant reponde
+
+  interface:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: docurag-interface
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      API_URL: http://api:8000
+    command: >
+      streamlit run src/interface/app.py
+      --server.port 8501 --server.address 0.0.0.0
+    depends_on:
+      - api
+
+volumes:
+  qdrant_data:

@@ -1,0 +1,37 @@
+# requirements.txt
+# Version mineure epinglee sur les briques structurantes,
+# plus de latitude sur les utilitaires.
+
+# --- Orchestration ---
+langchain~=0.2.0
+langchain-openai~=0.1.0
+langchain-community~=0.2.0
+
+# --- Embeddings et re-ranking ---
+sentence-transformers~=3.0
+FlagEmbedding~=1.2            # bge-m3 (dense + sparse)
+
+# --- Base vectorielle ---
+qdrant-client~=1.9
+
+# --- Chargement de documents ---
+pypdf~=4.2
+python-docx~=1.1
+unstructured~=0.14
+beautifulsoup4~=4.12
+
+# --- API et interface ---
+fastapi~=0.111
+uvicorn[standard]~=0.30
+pydantic~=2.7
+pydantic-settings~=2.2
+streamlit~=1.35
+
+# --- Evaluation ---
+ragas~=0.1
+datasets~=2.19
+
+# --- Utilitaires ---
+python-dotenv~=1.0
+tiktoken~=0.7
+tenacity~=8.3                 # reprise automatique sur echec d'API

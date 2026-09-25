@@ -1,0 +1,27 @@
+FONCTION decouper(texte, separateurs, budget) :
+
+    SI taille(texte) <= budget ALORS
+        RETOURNER [texte]            # tient : on s'arrete ici
+    FIN SI
+
+    SI separateurs est vide ALORS
+        RETOURNER coupe_brutale(texte, budget)   # dernier recours
+    FIN SI
+
+    sep     = separateurs[0]         # le plus structurant disponible
+    restants = separateurs[1:]       # les suivants, moins structurants
+
+    morceaux = texte.decouper_sur(sep)
+
+    resultat = []
+    POUR CHAQUE morceau DANS morceaux :
+        SI taille(morceau) <= budget ALORS
+            resultat.ajouter(morceau)            # NON : on garde
+        SINON
+            # OUI : trop gros -> on redescend d'un cran
+            resultat.etendre(decouper(morceau, restants, budget))
+        FIN SI
+    FIN POUR
+
+    RETOURNER regrouper_les_petits(resultat, budget)
+FIN FONCTION

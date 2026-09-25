@@ -1,0 +1,32 @@
+docurag/
+|-- src/
+|   |-- config.py            # Configuration centralisee (unique source)
+|   |-- ingestion/           # === HORS LIGNE ===
+|   |   |-- loader.py        #   chargement multi-sources
+|   |   |-- chunker.py       #   decoupage
+|   |   |-- indexer.py       #   vectorisation + ecriture dans Qdrant
+|   |   |-- __init__.py      #   orchestration du pipeline
+|   |-- retrieval/           # === EN LIGNE ===
+|   |   |-- retriever.py     #   hybride + fusion + re-ranking
+|   |-- generation/          # === EN LIGNE ===
+|   |   |-- prompts.py       #   gabarits versionnes
+|   |   |-- generator.py     #   appel du modele, citations, confiance
+|   |-- api/
+|   |   |-- schemas.py       #   contrats d'entree/sortie (Pydantic)
+|   |   |-- main.py          #   application FastAPI
+|   |-- interface/
+|       |-- app.py           #   interface Streamlit
+|-- tests/
+|   |-- test_ingestion.py
+|   |-- test_retrieval.py
+|   |-- test_evaluation.py   # evaluation RAGAS, lancee en CI
+|-- documents/               # corpus a indexer (hors depot Git)
+|-- eval/
+|   |-- jeu_reference.json   # le jeu du chapitre precedent, versionne
+|-- docker/
+|   |-- Dockerfile
+|   |-- docker-compose.yml
+|-- .env.example             # modele de configuration, SANS secrets
+|-- .gitignore               # contient .env et documents/
+|-- requirements.txt
+|-- README.md
