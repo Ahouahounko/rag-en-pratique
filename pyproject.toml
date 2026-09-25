@@ -12,6 +12,7 @@ authors = [
   { name = "Ahouahounko" },
 ]
 dependencies = [
+  "openai>=1,<3",
   "python-dotenv>=1.0,<2",
 ]
 
@@ -21,15 +22,21 @@ dev = [
   "pytest>=8,<9",
   "ruff>=0.6,<1",
 ]
-openai = [
-  "openai>=1,<3",
-]
 pdf = [
   "pypdf>=5,<7",
 ]
+app = [
+  "fastapi>=0.115,<1",
+  "requests>=2.32,<3",
+  "streamlit>=1.40,<2",
+  "uvicorn>=0.30,<1",
+]
 all = [
-  "openai>=1,<3",
+  "fastapi>=0.115,<1",
   "pypdf>=5,<7",
+  "requests>=2.32,<3",
+  "streamlit>=1.40,<2",
+  "uvicorn>=0.30,<1",
 ]
 
 [tool.hatch.build.targets.wheel]

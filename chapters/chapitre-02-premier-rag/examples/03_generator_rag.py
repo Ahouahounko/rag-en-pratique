@@ -1,46 +1,31 @@
-from langchain.chat_models import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
-from langchain.schema.output_parser import StrOutputParser
+"""Génère une réponse sourcée avec la Responses API d'OpenAI."""
 
-# Le prompt est le contrat entre vous et le LLM.
-# "Grounding" = obligation de rester dans les documents fournis.
-RAG_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """Tu es un assistant expert et rigoureux.
+from __future__ import annotations
 
-REGLES ABSOLUES :
-1. Tu reponds UNIQUEMENT a partir des extraits de documents fournis.
-2. Si l'information n'est pas dans les extraits, tu le dis clairement :
-   "Cette information n'est pas disponible dans les documents consultes."
-3. Tu ne fabriques JAMAIS d'information, meme si elle te semble evidente.
-4. Tu cites systematiquement tes sources : [Nom du document, page X]
-5. Ton ton : professionnel, precis, concis."""),
+from collections.abc import Sequence
 
-    ("human", """EXTRAITS DE DOCUMENTS :
-{context}
+from rag_en_pratique.core import Document, SearchResult
+from rag_en_pratique.openai_adapter import OpenAIGenerator
 
-QUESTION : {question}
 
-REPONSE (avec citations) :""")
-])
+def generate_answer(question: str, passages: Sequence[SearchResult]) -> str:
+    return OpenAIGenerator().generate(question, passages)
 
-def generate_answer(question: str,
-                    chunks: list,
-                    temperature: float = 0.0) -> str:
-    """
-    Generation de la reponse a partir des chunks recuperes.
-    Temperature = 0 pour une fidelite factuelle maximale.
-    """
-    # Formater les chunks avec leurs metadonnees pour faciliter les citations
-    context_parts = []
-    for i, chunk in enumerate(chunks, 1):
-        source = chunk.metadata.get("source", "Document inconnu")
-        page = chunk.metadata.get("page", "?")
-        context_parts.append(
-            f"[Extrait {i} - {source}, page {page}]\n{chunk.page_content}"
+
+def main() -> None:
+    passages = [
+        SearchResult(
+            Document("Les retours sont acceptés sous 30 jours.", {"source": "retours.md"}),
+            1.0,
         )
-    context = "\n\n---\n\n".join(context_parts)
+    ]
+    print(
+        generate_answer(
+            "Sous combien de jours peut-on retourner un produit ?",
+            passages,
+        )
+    )
 
-    llm = ChatOpenAI(model="gpt-4o", temperature=temperature)
-    chain = RAG_PROMPT | llm | StrOutputParser()
 
-    return chain.invoke({"context": context, "question": question})
+if __name__ == "__main__":
+    main()

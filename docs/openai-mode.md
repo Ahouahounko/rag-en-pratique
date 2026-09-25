@@ -1,15 +1,13 @@
-# Mode OpenAI facultatif
+# Configuration OpenAI requise
 
-Les notebooks fonctionnent hors ligne par défaut. Le mode OpenAI n'est activé
-que si l'utilisateur positionne explicitement `USE_OPENAI = True` ou
-`DOCURAG_USE_OPENAI=true` après avoir configuré son environnement.
+Les notebooks et scripts RAG utilisent OpenAI pour les embeddings et la
+génération. Aucun moteur de substitution hors ligne n'est fourni.
 
 ## Variables
 
 ```text
 OPENAI_API_KEY=...
 OPENAI_MODEL=...
-DOCURAG_USE_OPENAI=true
 ```
 
 Ne placez jamais une clé dans un notebook, un fichier suivi par Git ou une

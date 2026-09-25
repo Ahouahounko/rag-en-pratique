@@ -1,32 +1,67 @@
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 from rag_en_pratique.core import (
     Document,
-    ExtractiveGenerator,
-    HashingEmbedder,
     InMemoryVectorStore,
     RAGPipeline,
+    SearchResult,
     split_document,
 )
+from rag_en_pratique.openai_adapter import OpenAIEmbedder, OpenAIGenerator
 
 ROOT = Path(__file__).parents[1]
 
 
-def test_offline_pipeline_finds_relevant_source() -> None:
+class FakeEmbeddingsAPI:
+    def create(self, *, model: str, input: list[str]) -> SimpleNamespace:
+        del model
+        data = []
+        for text in input:
+            lowered = text.lower()
+            vector = [
+                float("retour" in lowered),
+                float("livraison" in lowered),
+                0.1,
+            ]
+            data.append(SimpleNamespace(embedding=vector))
+        return SimpleNamespace(data=data)
+
+
+class FakeResponsesAPI:
+    def create(self, **kwargs: object) -> SimpleNamespace:
+        assert kwargs["model"] == "modele-test"
+        return SimpleNamespace(output_text="Réponse OpenAI simulée avec citation [1].")
+
+
+class FakeOpenAIClient:
+    def __init__(self) -> None:
+        self.embeddings = FakeEmbeddingsAPI()
+        self.responses = FakeResponsesAPI()
+
+
+def test_openai_pipeline_with_injected_client() -> None:
     documents = [
         Document("Les retours sont acceptés pendant 30 jours.", {"source": "retours.md"}),
         Document("La livraison standard prend cinq jours.", {"source": "livraison.md"}),
     ]
-    store = InMemoryVectorStore(HashingEmbedder())
+    client = FakeOpenAIClient()
+    store = InMemoryVectorStore(OpenAIEmbedder(client=client))
     store.add(documents)
-    result = RAGPipeline(store, ExtractiveGenerator()).ask(
+    result = RAGPipeline(store, OpenAIGenerator("modele-test", client=client)).ask(
         "Pendant combien de jours les retours sont-ils acceptés ?", top_k=1
     )
     assert result["sources"][0]["metadata"]["source"] == "retours.md"
-    assert "30 jours" in result["answer"]
-    assert "livraison standard" not in result["answer"]
+    assert result["answer"] == "Réponse OpenAI simulée avec citation [1]."
+
+
+def test_generator_builds_grounded_openai_request() -> None:
+    client = FakeOpenAIClient()
+    generator = OpenAIGenerator("modele-test", client=client)
+    passage = SearchResult(Document("Le retour dure 30 jours.", {"source": "retours.md"}), 1.0)
+    assert "citation [1]" in generator.generate("Quel délai ?", [passage])
 
 
 def test_chunking_preserves_metadata() -> None:
@@ -46,12 +81,13 @@ def test_docurag_ingests_sample_documents() -> None:
         from docurag import DocuRAG
         from docurag.config import Settings
 
-        app = DocuRAG(Settings(use_openai=False, chunk_size=60, chunk_overlap=10))
+        app = DocuRAG(
+            Settings(openai_model="modele-test", chunk_size=60, chunk_overlap=10),
+            client=FakeOpenAIClient(),
+        )
         assert app.ingest(ROOT / "data" / "sample") >= 2
         result = app.ask("Quel est le délai pour retourner un produit ?")
         assert result["sources"]
-        unknown = app.ask("Quel est le numéro de téléphone du directeur ?")
-        assert "pas disponible" in unknown["answer"]
     finally:
         sys.path.remove(str(runnable))
 

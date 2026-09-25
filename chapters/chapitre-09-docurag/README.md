@@ -9,7 +9,7 @@ Projet fil rouge assemblant un système RAG complet et utilisable.
 - [`09_docurag.ipynb`](09_docurag.ipynb) : ingestion, recherche et réponse guidées ;
 - [`runnable/docurag`](runnable/docurag/) : application Python modulaire ;
 - [`runnable/run_docurag.py`](runnable/run_docurag.py) : point d'entrée local ;
-- mode hors ligne par défaut, mode OpenAI explicitement activable.
+- OpenAI est requis pour les embeddings et la génération.
 
 ## Code du manuscrit
 

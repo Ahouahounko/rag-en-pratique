@@ -6,12 +6,11 @@ from pathlib import Path
 
 from rag_en_pratique.core import (
     Document,
-    ExtractiveGenerator,
-    HashingEmbedder,
     InMemoryVectorStore,
     RAGPipeline,
     split_documents,
 )
+from rag_en_pratique.openai_adapter import OpenAIEmbedder, OpenAIGenerator
 
 
 def load_markdown_documents(directory: Path) -> list[Document]:
@@ -22,20 +21,12 @@ def load_markdown_documents(directory: Path) -> list[Document]:
     ]
 
 
-def build_pipeline(data_directory: Path, *, use_openai: bool = False) -> RAGPipeline:
+def build_pipeline(data_directory: Path) -> RAGPipeline:
     documents = load_markdown_documents(data_directory)
     chunks = split_documents(documents, chunk_size=60, overlap=10)
-    if use_openai:
-        from rag_en_pratique.openai_adapter import OpenAIEmbedder, OpenAIGenerator
-
-        embedder = OpenAIEmbedder()
-        generator = OpenAIGenerator()
-    else:
-        embedder = HashingEmbedder()
-        generator = ExtractiveGenerator()
-    store = InMemoryVectorStore(embedder)
+    store = InMemoryVectorStore(OpenAIEmbedder())
     store.add(chunks)
-    return RAGPipeline(store, generator)
+    return RAGPipeline(store, OpenAIGenerator())
 
 
 def main() -> None:

@@ -1,47 +1,11 @@
-"""Briques RAG légères, déterministes et utilisables hors ligne."""
+"""Briques communes aux exemples RAG utilisant OpenAI."""
 
 from __future__ import annotations
 
-import hashlib
 import math
-import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
-
-TOKEN_PATTERN = re.compile(r"[\wà-ÿ]+", re.IGNORECASE)
-STOPWORDS = {
-    "a",
-    "au",
-    "aux",
-    "avec",
-    "ce",
-    "ces",
-    "dans",
-    "de",
-    "des",
-    "du",
-    "elle",
-    "en",
-    "est",
-    "et",
-    "il",
-    "la",
-    "le",
-    "les",
-    "ou",
-    "par",
-    "pour",
-    "que",
-    "quel",
-    "quelle",
-    "qui",
-    "se",
-    "son",
-    "sur",
-    "un",
-    "une",
-}
 
 
 @dataclass(frozen=True)
@@ -66,14 +30,6 @@ class Embedder(Protocol):
 
 class Generator(Protocol):
     def generate(self, question: str, passages: Sequence[SearchResult]) -> str: ...
-
-
-def tokenize(text: str) -> list[str]:
-    return [
-        token.lower()
-        for token in TOKEN_PATTERN.findall(text)
-        if token.lower() not in STOPWORDS and len(token) > 1
-    ]
 
 
 def split_document(
@@ -118,31 +74,15 @@ def split_documents(
     ]
 
 
-class HashingEmbedder:
-    """Embedding local sans téléchargement, destiné aux démonstrations."""
-
-    def __init__(self, dimensions: int = 256) -> None:
-        if dimensions <= 0:
-            raise ValueError("dimensions doit être strictement positif")
-        self.dimensions = dimensions
-
-    def embed(self, texts: Sequence[str]) -> list[list[float]]:
-        return [self._embed_one(text) for text in texts]
-
-    def _embed_one(self, text: str) -> list[float]:
-        vector = [0.0] * self.dimensions
-        for token in tokenize(text):
-            digest = hashlib.blake2b(token.encode("utf-8"), digest_size=8).digest()
-            bucket = int.from_bytes(digest, "big") % self.dimensions
-            vector[bucket] += 1.0
-        norm = math.sqrt(sum(value * value for value in vector))
-        return [value / norm for value in vector] if norm else vector
-
-
 def cosine_similarity(left: Sequence[float], right: Sequence[float]) -> float:
     if len(left) != len(right):
         raise ValueError("Les vecteurs doivent avoir la même dimension")
-    return sum(a * b for a, b in zip(left, right, strict=True))
+    dot_product = sum(a * b for a, b in zip(left, right, strict=True))
+    left_norm = math.sqrt(sum(value * value for value in left))
+    right_norm = math.sqrt(sum(value * value for value in right))
+    if not left_norm or not right_norm:
+        return 0.0
+    return dot_product / (left_norm * right_norm)
 
 
 class InMemoryVectorStore:
@@ -170,30 +110,6 @@ class InMemoryVectorStore:
             reverse=True,
         )
         return ranked[:top_k]
-
-
-class ExtractiveGenerator:
-    """Générateur hors ligne qui cite les passages les plus pertinents."""
-
-    def __init__(self, min_score: float = 0.12) -> None:
-        self.min_score = min_score
-
-    def generate(self, question: str, passages: Sequence[SearchResult]) -> str:
-        del question
-        best_score = passages[0].score if passages else 0.0
-        useful = [
-            passage
-            for passage in passages
-            if passage.score >= self.min_score and passage.score >= best_score * 0.6
-        ]
-        if not useful:
-            return "Cette information n'est pas disponible dans les documents consultés."
-        lines = ["Réponse extraite des documents :"]
-        for index, passage in enumerate(useful, start=1):
-            source = passage.document.metadata.get("source", "document")
-            excerpt = passage.document.text.strip()
-            lines.append(f"[{index}] {excerpt} (source : {source})")
-        return "\n".join(lines)
 
 
 class RAGPipeline:

@@ -1,38 +1,31 @@
-from langchain.document_loaders import DirectoryLoader, PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import FAISS
+"""Ingestion, chunking et indexation avec les embeddings OpenAI."""
 
-def build_knowledge_base(documents_path: str) -> FAISS:
-    """
-    Pipeline d'ingestion (phase OFFLINE) :
-    Charge les PDF -> Decoupe en chunks -> Encode en vecteurs -> Indexe.
-    """
-    # Etape 1 : Chargement
-    loader = DirectoryLoader(
-        documents_path, glob="**/*.pdf", loader_cls=PyPDFLoader
-    )
-    documents = loader.load()
-    print(f"[Ingestion] {len(documents)} pages chargees")
+from __future__ import annotations
 
-    # Etape 2 : Chunking avec chevauchement (overlap)
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=512,
-        chunk_overlap=64,   # ~12,5 % d'overlap
-        separators=["\n\n", "\n", ".", " ", ""]  # Respecte les frontieres naturelles
-    )
-    chunks = splitter.split_documents(documents)
-    print(f"[Ingestion] {len(chunks)} chunks crees")
+from collections.abc import Sequence
+from pathlib import Path
 
-    # Etape 3 : Encodage (modele multilingue adapte au francais)
-    embedding_model = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
-        model_kwargs={"device": "cpu"}  # Remplacez par "cuda" si GPU disponible
-    )
+from rag_en_pratique.core import Document, InMemoryVectorStore, split_documents
+from rag_en_pratique.openai_adapter import OpenAIEmbedder
 
-    # Etape 4 : Construction et sauvegarde de l'index FAISS
-    vector_store = FAISS.from_documents(chunks, embedding_model)
-    vector_store.save_local("faiss_index")
-    print("[Ingestion] Index sauvegarde dans ./faiss_index/")
 
-    return vector_store
+def build_knowledge_base(documents: Sequence[Document]) -> InMemoryVectorStore:
+    chunks = split_documents(documents, chunk_size=60, overlap=10)
+    store = InMemoryVectorStore(OpenAIEmbedder(model="text-embedding-3-small"))
+    store.add(chunks)
+    return store
+
+
+def main() -> None:
+    repository = Path(__file__).resolve().parents[3]
+    documents = [
+        Document(path.read_text(encoding="utf-8"), {"source": path.name})
+        for path in sorted((repository / "data" / "sample").glob("*.md"))
+        if path.name.lower() != "readme.md"
+    ]
+    store = build_knowledge_base(documents)
+    print(f"{len(store.documents)} chunks indexés avec OpenAI")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,7 +1,7 @@
 docurag/
 |-- src/
 |   |-- config.py            # Configuration centralisee (unique source)
-|   |-- ingestion/           # === HORS LIGNE ===
+|   |-- ingestion/           # Chargement et préparation
 |   |   |-- loader.py        #   chargement multi-sources
 |   |   |-- chunker.py       #   decoupage
 |   |   |-- indexer.py       #   vectorisation + ecriture dans Qdrant

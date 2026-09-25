@@ -1,20 +1,26 @@
-from langchain.document_loaders import (
-    PyPDFLoader, UnstructuredWordDocumentLoader,
-    WebBaseLoader, DirectoryLoader
-)
+"""Charge les documents de démonstration du chapitre 2."""
 
-# PDF : un Document par page, avec metadata['page']
-pdf_docs = PyPDFLoader("rapport_annuel.pdf").load()
+from __future__ import annotations
 
-# Word : un Document par fichier
-word_docs = UnstructuredWordDocumentLoader("contrat.docx").load()
+from pathlib import Path
 
-# Page web : recupere et nettoie le HTML
-web_docs = WebBaseLoader("https://exemple.com/faq").load()
+from rag_en_pratique.core import Document
 
-# Dossier entier : charge tous les PDF recursivement
-all_docs = DirectoryLoader(
-    "./documents/", glob="**/*.pdf", loader_cls=PyPDFLoader
-).load()
 
-print(f"{len(all_docs)} documents charges, prets pour le chunking.")
+def load_markdown_documents(directory: Path) -> list[Document]:
+    return [
+        Document(path.read_text(encoding="utf-8"), {"source": path.name})
+        for path in sorted(directory.glob("*.md"))
+        if path.name.lower() != "readme.md"
+    ]
+
+
+def main() -> None:
+    repository = Path(__file__).resolve().parents[3]
+    documents = load_markdown_documents(repository / "data" / "sample")
+    for document in documents:
+        print(document.metadata["source"], len(document.text), "caractères")
+
+
+if __name__ == "__main__":
+    main()

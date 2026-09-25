@@ -71,9 +71,8 @@ vous souhaitez utiliser. Ne publiez jamais le fichier `.env`.
 jupyter lab
 ```
 
-Les exemples sont conçus pour isoler les fournisseurs externes derrière une
-configuration commune. Une clé OpenAI peut être utilisée, mais elle n'est pas
-requise pour tous les chapitres.
+Les exemples RAG utilisent OpenAI. Configurez `OPENAI_API_KEY` et
+`OPENAI_MODEL` dans votre environnement avant d'exécuter les appels de modèle.
 
 ## Notebooks disponibles
 
@@ -82,8 +81,8 @@ requise pour tous les chapitres.
 - [Chapitre 9 — DocuRAG](chapters/chapitre-09-docurag/09_docurag.ipynb) :
   application modulaire et parcours complet.
 
-Ces notebooks fonctionnent hors ligne par défaut et proposent un mode OpenAI
-facultatif. Consultez [la configuration OpenAI](docs/openai-mode.md).
+Ces notebooks utilisent OpenAI pour les embeddings et la génération. Consultez
+[la configuration OpenAI](docs/openai-mode.md).
 
 ## Tests
 

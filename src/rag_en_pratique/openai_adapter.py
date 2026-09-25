@@ -1,8 +1,4 @@
-"""Adaptateurs OpenAI optionnels pour les exemples du livre.
-
-Le module n'importe le SDK que lors de l'instanciation. Le mode hors ligne du
-dépôt reste donc utilisable sans SDK ni clé API.
-"""
+"""Adaptateurs OpenAI utilisés par les exemples du livre."""
 
 from __future__ import annotations
 
@@ -12,22 +8,24 @@ from collections.abc import Sequence
 from .core import SearchResult
 
 
-def _client():
+def _client(client=None):
+    if client is not None:
+        return client
     if not os.getenv("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY n'est pas configurée")
     try:
         from openai import OpenAI
     except ImportError as exc:
-        raise RuntimeError('Installez les dépendances avec pip install -e ".[openai]"') from exc
+        raise RuntimeError("Installez les dépendances avec pip install -e .") from exc
     return OpenAI()
 
 
 class OpenAIEmbedder:
     """Embeddings via l'API OpenAI."""
 
-    def __init__(self, model: str = "text-embedding-3-small") -> None:
-        self.model = model
-        self.client = _client()
+    def __init__(self, model: str | None = None, *, client=None) -> None:
+        self.model = model or os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+        self.client = _client(client)
 
     def embed(self, texts: Sequence[str]) -> list[list[float]]:
         response = self.client.embeddings.create(model=self.model, input=list(texts))
@@ -37,11 +35,11 @@ class OpenAIEmbedder:
 class OpenAIGenerator:
     """Génération fondée sur les passages retrouvés via Responses API."""
 
-    def __init__(self, model: str | None = None) -> None:
+    def __init__(self, model: str | None = None, *, client=None) -> None:
         self.model = model or os.getenv("OPENAI_MODEL")
         if not self.model:
             raise RuntimeError("Configurez OPENAI_MODEL avant d'activer le mode OpenAI")
-        self.client = _client()
+        self.client = _client(client)
 
     def generate(self, question: str, passages: Sequence[SearchResult]) -> str:
         context = "\n\n".join(

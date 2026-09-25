@@ -8,8 +8,8 @@ ses composants : ingestion, indexation, retrieval et génération.
 ## Parcours exécutable
 
 - [`02_premier_rag.ipynb`](02_premier_rag.ipynb) : notebook guidé Colab et local ;
-- [`runnable/premier_rag.py`](runnable/premier_rag.py) : script hors ligne ;
-- mode OpenAI facultatif et désactivé par défaut.
+- [`runnable/premier_rag.py`](runnable/premier_rag.py) : script exécutable ;
+- OpenAI est utilisé pour les embeddings et la génération.
 
 ## Code du manuscrit
 
