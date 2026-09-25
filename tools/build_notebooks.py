@@ -309,6 +309,124 @@ def chapter_4() -> dict[str, object]:
     return notebook(cells)
 
 
+CHAPTER_5_BOOTSTRAP = f'''import os
+import subprocess
+import sys
+from pathlib import Path
+
+if not Path("src").is_dir():
+    if not Path("rag-en-pratique").is_dir():
+        subprocess.run(["git", "clone", "{REPOSITORY_URL}.git"], check=True)
+    os.chdir("rag-en-pratique")
+
+subprocess.run(
+    [sys.executable, "-m", "pip", "install", "-q", "-e", ".[vectorstores,vector-services]"],
+    check=True,
+)
+print("Environnement du chapitre 5 prêt :", Path.cwd())
+'''
+
+CHAPTER_5_OPENAI = '''# @title Activer les exemples OpenAI
+UTILISER_OPENAI = False # @param {type:"boolean"}
+
+if UTILISER_OPENAI:
+    import os
+    import subprocess
+    import sys
+    from getpass import getpass
+
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", ".[openai]"], check=True)
+    if not os.getenv("OPENAI_API_KEY"):
+        os.environ["OPENAI_API_KEY"] = getpass("OPENAI_API_KEY : ")
+    if not os.getenv("OPENAI_MODEL"):
+        os.environ["OPENAI_MODEL"] = input("OPENAI_MODEL : ").strip()
+    print("OpenAI est activé pour les exemples 4, 7, 8, 10, 11, 13 et 14.")
+else:
+    print("OpenAI désactivé : les exemples locaux restent exécutables.")
+'''
+
+CHAPTER_5_PINECONE = '''# @title Activer Pinecone pour l'exemple 6
+UTILISER_PINECONE = False # @param {type:"boolean"}
+
+if UTILISER_PINECONE:
+    import os
+    from getpass import getpass
+
+    if not os.getenv("PINECONE_API_KEY"):
+        os.environ["PINECONE_API_KEY"] = getpass("PINECONE_API_KEY : ")
+    print("Pinecone est activé. La création d'un index distant peut être facturée.")
+else:
+    print("Pinecone désactivé.")
+'''
+
+
+def chapter_5() -> dict[str, object]:
+    badge = (
+        "https://colab.research.google.com/github/Ahouahounko/rag-en-pratique/"
+        "blob/main/chapters/chapitre-05-bases-vectorielles/05_bases_vectorielles.ipynb"
+    )
+    examples = ROOT / "chapters/chapitre-05-bases-vectorielles/examples"
+    lessons = [
+        ("01_faiss_hnsw.py", "FAISS HNSW", "Construire un graphe navigable et régler efSearch."),
+        ("02_faiss_ivf.py", "FAISS IVF", "Entraîner les centroïdes puis choisir le nombre de listes sondées."),
+        ("03_filtrage_metadonnees.py", "Filtres Qdrant", "Restreindre les candidats avant la recherche vectorielle."),
+        ("04_chroma.py", "Chroma et OpenAI", "Persister une collection et calculer les embeddings avec OpenAI."),
+        ("05_qdrant.py", "Collection Qdrant", "Configurer vecteurs denses, sparse et paramètres HNSW."),
+        ("06_pinecone.py", "Pinecone serverless", "Créer explicitement un index distant et un namespace."),
+        ("07_self_query.py", "Self-Query", "Séparer le texte recherché des filtres structurés."),
+        ("08_multi_query.py", "Multi-Query", "Générer des variantes puis fusionner les rangs avec RRF."),
+        ("09_ensemble.py", "Ensemble BM25 + dense", "Pondérer les signaux lexical et sémantique."),
+        ("10_text_to_sql.py", "Text-to-SQL", "Limiter le modèle à une requête SELECT et à des tables autorisées."),
+        ("11_router_rag.py", "Routeur RAG", "Choisir entre documents, tables ou une réponse combinée."),
+        ("12_retriever_production.py", "Retriever de production", "Filtrer, reclasser, journaliser et prévoir un repli."),
+        ("13_rag_iteratif.py", "RAG itératif", "Rechercher les informations manquantes avec une borne stricte."),
+        ("14_rag_adaptatif.py", "RAG adaptatif", "Décider quand chercher, répondre ou demander une clarification."),
+    ]
+    cells = [
+        markdown(
+            f"# Chapitre 5 — Bases vectorielles et architectures de retrieval\n\n"
+            f"[![Ouvrir dans Colab](https://colab.research.google.com/assets/colab-badge.svg)]({badge})\n\n"
+            "Ce laboratoire transforme les 14 extraits du chapitre en exemples autonomes. "
+            "Les appels OpenAI et Pinecone sont désactivés par défaut."
+        ),
+        markdown(
+            "## Ressources utiles\n\n"
+            "- [FAISS](https://faiss.ai/)\n"
+            "- [Qdrant](https://qdrant.tech/documentation/)\n"
+            "- [Chroma](https://docs.trychroma.com/)\n"
+            "- [Pinecone](https://docs.pinecone.io/)\n"
+            "- [OpenAI — embeddings](https://developers.openai.com/api/docs/guides/embeddings)\n"
+            "- [Sentence Transformers — Retrieve & Re-Rank](https://sbert.net/examples/sentence_transformer/applications/retrieve_rerank/README.html)"
+        ),
+        markdown("## 0. Préparer Colab ou Jupyter\n\nInstalle les moteurs utilisés dans le chapitre."),
+        code(CHAPTER_5_BOOTSTRAP),
+        markdown("## Configuration OpenAI facultative\n\nActivez-la seulement avant les exemples concernés."),
+        code(CHAPTER_5_OPENAI),
+        markdown("## Configuration Pinecone facultative\n\nLa clé est saisie de manière masquée et jamais enregistrée."),
+        code(CHAPTER_5_PINECONE),
+    ]
+    for index, (filename, title, explanation) in enumerate(lessons, start=1):
+        source = (examples / filename).read_text(encoding="utf-8")
+        cells.extend(
+            [
+                markdown(
+                    f"## {index}. {title}\n\n{explanation}\n\n"
+                    f"Script correspondant : [`{filename}`](examples/{filename})"
+                ),
+                code("# ruff: noqa: F811\n" + source),
+            ]
+        )
+    cells.append(
+        markdown(
+            "## Bilan\n\n"
+            "Le choix d'une base vectorielle dépend du volume, des filtres, de la latence, "
+            "de l'exploitation et du coût. Commencez par une mesure locale, puis ajoutez "
+            "les services et architectures avancées uniquement lorsqu'ils améliorent vos évaluations."
+        )
+    )
+    return notebook(cells)
+
+
 def chapter_2() -> dict[str, object]:
     badge = (
         "https://colab.research.google.com/github/Ahouahounko/rag-en-pratique/"
@@ -538,6 +656,10 @@ def main() -> None:
     write(
         ROOT / "chapters/chapitre-04-retrieval-avance/04_retrieval_avance.ipynb",
         chapter_4(),
+    )
+    write(
+        ROOT / "chapters/chapitre-05-bases-vectorielles/05_bases_vectorielles.ipynb",
+        chapter_5(),
     )
     write(ROOT / "chapters/chapitre-09-docurag/09_docurag.ipynb", chapter_9())
 

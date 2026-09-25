@@ -82,6 +82,8 @@ Les exemples RAG acceptent OpenAI, Hugging Face ou Ollama. Configurez
   16 expériences sur les stratégies de découpage et leurs métadonnées ;
 - [Chapitre 4 — Retrieval avancé](chapters/chapitre-04-retrieval-avance/04_retrieval_avance.ipynb) :
   réécriture, expansion, HyDE, recherche hybride, reranking, MMR et compression ;
+- [Chapitre 5 — Bases vectorielles](chapters/chapitre-05-bases-vectorielles/05_bases_vectorielles.ipynb) :
+  FAISS, Qdrant, Chroma, Pinecone et architectures de retrieval ;
 - [Chapitre 9 — DocuRAG](chapters/chapitre-09-docurag/09_docurag.ipynb) :
   application modulaire et parcours complet.
 

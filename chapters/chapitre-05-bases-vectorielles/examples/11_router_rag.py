@@ -1,5 +1,10 @@
+"""Orienter une question vers des documents, des tables ou les deux."""
+
+from __future__ import annotations
+
+import os
 from enum import Enum
-from langchain_openai import ChatOpenAI
+from typing import Any
 
 
 class Source(Enum):
@@ -8,28 +13,36 @@ class Source(Enum):
     LES_DEUX = "les_deux"
 
 
-CLASSIFIEUR = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-
-GABARIT = """Determine ou chercher la reponse a cette question.
-
-- "documents" : procedures, politiques, explications, definitions
-- "tables"    : chiffres, comptages, agregats, evolutions datees
-- "les_deux"  : la reponse exige un chiffre ET son explication
-
+GABARIT = """Détermine où chercher la réponse.
+- documents : procédures, politiques, explications, définitions
+- tables : chiffres, comptages, agrégats, évolutions datées
+- les_deux : un chiffre et son explication
 Question : {question}
+Réponds par un seul mot."""
 
-Reponds par un seul mot :"""
 
+def router(
+    question: str,
+    *,
+    client: Any | None = None,
+    model: str | None = None,
+) -> Source:
+    if client is None:
+        from openai import OpenAI
 
-def router(question: str) -> Source:
-    """Classe la question. En cas de doute, on privilegie les
-    documents : une reponse documentaire imprecise se repere,
-    un chiffre faux passe inapercu."""
-    reponse = CLASSIFIEUR.invoke(
-        GABARIT.format(question=question)
-    ).content.strip().lower()
-
+        client = OpenAI()
+    model = model or os.getenv("OPENAI_MODEL")
+    if not model:
+        raise RuntimeError("Définissez OPENAI_MODEL.")
+    reponse = client.responses.create(model=model, input=GABARIT.format(question=question))
     try:
-        return Source(reponse)
+        return Source(reponse.output_text.strip().lower())
     except ValueError:
-        return Source.DOCUMENTS          # repli prudent
+        return Source.DOCUMENTS
+
+
+if __name__ == "__main__":
+    if not os.getenv("OPENAI_API_KEY") or not os.getenv("OPENAI_MODEL"):
+        print("Exemple prêt : définissez OPENAI_API_KEY et OPENAI_MODEL.")
+    else:
+        print(router("Combien de ventes ont été réalisées et pourquoi ?"))

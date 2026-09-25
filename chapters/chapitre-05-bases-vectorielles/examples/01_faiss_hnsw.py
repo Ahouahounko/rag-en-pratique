@@ -1,43 +1,42 @@
-import faiss
+"""Construire et interroger un index FAISS HNSW."""
+
+from __future__ import annotations
+
 import numpy as np
 
 
-def construire_index_hnsw(vecteurs: np.ndarray,
-                          dimension: int,
-                          M: int = 32,
-                          ef_construction: int = 200) -> faiss.Index:
-    """Index HNSW pour un corpus allant jusqu'a ~10M vecteurs.
+def construire_index_hnsw(
+    vecteurs: np.ndarray,
+    dimension: int,
+    m: int = 32,
+    ef_construction: int = 200,
+):
+    """Crée un index HNSW utilisant le produit scalaire sur des vecteurs normalisés."""
+    import faiss
 
-    M=32 est plus genereux que le defaut (16) : meilleur recall,
-    environ 50 % de memoire en plus. Bon compromis en RAG.
-    """
-    index = faiss.IndexHNSWFlat(dimension, M)
-    index.hnsw.efConstruction = ef_construction
-
-    # FAISS raisonne en DISTANCES, pas en similarites.
-    # Normaliser les vecteurs rend la distance euclidienne
-    # equivalente a la similarite cosinus. Oublier cette ligne
-    # est l'erreur la plus frequente avec FAISS.
-    donnees = vecteurs.astype(np.float32).copy()
+    donnees = np.asarray(vecteurs, dtype=np.float32).copy()
+    if donnees.ndim != 2 or donnees.shape[1] != dimension:
+        raise ValueError(f"Forme attendue : (n, {dimension})")
     faiss.normalize_L2(donnees)
-
+    index = faiss.IndexHNSWFlat(dimension, m, faiss.METRIC_INNER_PRODUCT)
+    index.hnsw.efConstruction = ef_construction
     index.add(donnees)
     return index
 
 
-def chercher(index: faiss.Index, vecteur_requete: np.ndarray,
-             k: int = 5, ef_search: int = 64) -> tuple:
-    """Recherche des k plus proches voisins.
+def chercher(index, vecteur_requete: np.ndarray, k: int = 5, ef_search: int = 64):
+    """Renvoie les scores cosinus et les positions des voisins."""
+    import faiss
 
-    ef_search est le curseur recall/latence, ajustable a chaud :
-        32  -> plus rapide, moins precis
-        64  -> valeur de depart raisonnable
-        128 -> plus precis, plus lent
-    """
     index.hnsw.efSearch = ef_search
+    requete = np.asarray(vecteur_requete, dtype=np.float32).reshape(1, -1).copy()
+    faiss.normalize_L2(requete)
+    scores, positions = index.search(requete, k)
+    return scores[0], positions[0]
 
-    requete = vecteur_requete.astype(np.float32).reshape(1, -1).copy()
-    faiss.normalize_L2(requete)          # meme traitement qu'a l'indexation
 
-    distances, positions = index.search(requete, k)
-    return distances[0], positions[0]
+if __name__ == "__main__":
+    corpus = np.array([[1, 0, 0], [0.9, 0.1, 0], [0, 1, 0], [0, 0, 1]], dtype=np.float32)
+    hnsw = construire_index_hnsw(corpus, dimension=3, m=8)
+    scores, ids = chercher(hnsw, np.array([1, 0, 0]), k=2)
+    print(list(zip(ids.tolist(), scores.round(3).tolist(), strict=True)))

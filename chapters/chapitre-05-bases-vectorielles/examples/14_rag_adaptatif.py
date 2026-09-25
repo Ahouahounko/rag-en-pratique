@@ -1,5 +1,10 @@
+"""Décider s'il faut chercher, répondre directement ou clarifier."""
+
+from __future__ import annotations
+
+import os
 from enum import Enum
-from langchain_openai import ChatOpenAI
+from typing import Any
 
 
 class Decision(Enum):
@@ -8,28 +13,35 @@ class Decision(Enum):
     CLARIFIER = "clarifier"
 
 
-AIGUILLEUR = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+def decider(
+    question: str,
+    *,
+    client: Any | None = None,
+    model: str | None = None,
+) -> Decision:
+    if client is None:
+        from openai import OpenAI
 
-
-def decider(question: str) -> Decision:
-    """Faut-il consulter le corpus pour cette question ?
-
-    En cas de doute, on cherche. Une recherche inutile coute
-    quelques centaines de millisecondes ; une reponse donnee de
-    memoire alors que le corpus contenait la verite officielle
-    est une erreur bien plus grave.
-    """
-    verdict = AIGUILLEUR.invoke(f"""
-Question : {question}
-
-- "chercher"  : porte sur des donnees internes, recentes,
-                chiffrees ou propres a l'organisation
-- "repondre"  : culture generale, definition, concept stable
-- "clarifier" : trop ambigue pour etre traitee telle quelle
-
-Reponds par un seul mot :""").content.strip().lower()
-
+        client = OpenAI()
+    model = model or os.getenv("OPENAI_MODEL")
+    if not model:
+        raise RuntimeError("Définissez OPENAI_MODEL.")
+    reponse = client.responses.create(
+        model=model,
+        input=(
+            f"Question : {question}\n"
+            "Réponds par chercher pour des données internes/récentes, repondre pour un concept "
+            "stable, ou clarifier si la question est ambiguë. Un seul mot."
+        ),
+    )
     try:
-        return Decision(verdict)
+        return Decision(reponse.output_text.strip().lower())
     except ValueError:
-        return Decision.CHERCHER          # repli prudent
+        return Decision.CHERCHER
+
+
+if __name__ == "__main__":
+    if not os.getenv("OPENAI_API_KEY") or not os.getenv("OPENAI_MODEL"):
+        print("Exemple prêt : définissez OPENAI_API_KEY et OPENAI_MODEL.")
+    else:
+        print(decider("Quel est le chiffre d'affaires interne de cette année ?"))

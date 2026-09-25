@@ -1,37 +1,50 @@
-from langchain.retrievers import BM25Retriever, EnsembleRetriever
-from langchain.vectorstores import FAISS
+"""Fusionner un classement BM25 et un classement dense."""
 
-def build_ensemble_retriever(chunks: list,
-                             vector_store: FAISS,
-                             weights: list = None) -> EnsembleRetriever:
-    """
-    Construit un retriever hybride BM25 + dense avec fusion RRF.
+from __future__ import annotations
 
-    Args:
-        chunks : Documents textuels (pour l'index BM25)
-        vector_store : Index vectoriel (pour le retrieval dense)
-        weights : [poids_bm25, poids_dense] - defaut [0.4, 0.6]
-                  Ajustez selon votre corpus :
-                  - Corpus technique (codes, refs)  : [0.5, 0.5]
-                  - Corpus conversationnel          : [0.3, 0.7]
-    """
-    if weights is None:
-        weights = [0.4, 0.6]   # Legere preference pour le dense
+import re
+from collections import defaultdict
+from collections.abc import Callable
 
-    # Retriever BM25 (lexical)
-    bm25_retriever = BM25Retriever.from_documents(chunks)
-    bm25_retriever.k = 5
+from rank_bm25 import BM25Okapi
 
-    # Retriever dense (semantique)
-    dense_retriever = vector_store.as_retriever(
-        search_type = "similarity",
-        search_kwargs = {"k": 5}
-    )
 
-    # Ensemble avec fusion RRF ponderee
-    ensemble = EnsembleRetriever(
-        retrievers = [bm25_retriever, dense_retriever],
-        weights = weights
-    )
+def tokeniser(texte: str) -> list[str]:
+    return re.findall(r"\w+", texte.lower())
 
-    return ensemble
+
+def fusion_rrf_ponderee(
+    classements: list[list[str]],
+    poids: list[float],
+    constante: int = 60,
+) -> list[str]:
+    if len(classements) != len(poids):
+        raise ValueError("Un poids est requis par classement")
+    scores: dict[str, float] = defaultdict(float)
+    for classement, poids_source in zip(classements, poids, strict=True):
+        for rang, document in enumerate(classement, start=1):
+            scores[document] += poids_source / (constante + rang)
+    return sorted(scores, key=scores.get, reverse=True)
+
+
+def construire_ensemble(
+    documents: list[str],
+    recherche_dense: Callable[[str, int], list[str]],
+    poids: tuple[float, float] = (0.4, 0.6),
+):
+    bm25 = BM25Okapi([tokeniser(document) for document in documents])
+
+    def rechercher(question: str, k: int = 5) -> list[str]:
+        scores = bm25.get_scores(tokeniser(question))
+        lexical = [documents[i] for i in sorted(range(len(documents)), key=scores.__getitem__, reverse=True)[:k]]
+        dense = recherche_dense(question, k)
+        return fusion_rrf_ponderee([lexical, dense], list(poids))[:k]
+
+    return rechercher
+
+
+if __name__ == "__main__":
+    corpus = ["retour sous trente jours", "garantie de deux ans", "livraison en cinq jours"]
+    dense_demo = lambda question, k: sorted(corpus, key=lambda texte: abs(len(texte) - len(question)))[:k]
+    moteur = construire_ensemble(corpus, dense_demo)
+    print(moteur("délai pour retourner un produit", k=2))
