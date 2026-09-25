@@ -1,5 +1,6 @@
 import ast
 
+
 def decouper_code_python(source: str, chemin: str) -> list[dict]:
     """
     Un chunk = une fonction ou une classe complete,
@@ -34,3 +35,19 @@ def decouper_code_python(source: str, chemin: str) -> list[dict]:
             })
 
     return chunks
+
+
+if __name__ == "__main__":
+    source = '''import math
+
+def aire_cercle(rayon: float) -> float:
+    """Calcule l'aire d'un cercle."""
+    return math.pi * rayon ** 2
+
+class Client:
+    def __init__(self, nom: str) -> None:
+        self.nom = nom
+'''
+    for chunk in decouper_code_python(source, "geometrie.py"):
+        print(chunk["metadonnees"])
+        print(chunk["texte"], "\n")

@@ -1,64 +1,56 @@
+"""Late Chunking illustré avec un encodeur long-contexte pédagogique."""
+
 import numpy as np
+import tiktoken
 
-def late_chunking(document: str,
-                  modele_long_contexte,
-                  frontieres: list[tuple[int, int]]) -> list[np.ndarray]:
-    """
-    Args:
-        document           : le document complet, non decoupe
-        modele_long_contexte : modele capable de traiter tout le document
-        frontieres         : liste de (token_debut, token_fin)
 
-    Retour : un vecteur par chunk, chacun contextualise globalement.
-    """
-    # Etape 1 : embedding du document ENTIER.
-    # L'attention s'applique sur toute la sequence, donc chaque
-    # vecteur de token "a vu" le reste du document.
+class ModeleLongContextePedagogique:
+    """Produit un vecteur par token enrichi par la moyenne du document."""
+
+    def __init__(self, dimension: int = 8) -> None:
+        self.dimension = dimension
+        self.tokenizer = tiktoken.get_encoding("cl100k_base")
+
+    def encode_tokens(self, document: str) -> np.ndarray:
+        ids = np.array(self.tokenizer.encode(document), dtype=float)
+        dimensions = np.arange(1, self.dimension + 1, dtype=float)
+        locaux = np.sin(ids[:, None] / dimensions[None, :])
+        contexte_global = locaux.mean(axis=0, keepdims=True)
+        return locaux + contexte_global
+
+
+def late_chunking(
+    document: str,
+    modele_long_contexte: ModeleLongContextePedagogique,
+    frontieres: list[tuple[int, int]],
+) -> list[np.ndarray]:
     vecteurs_tokens = modele_long_contexte.encode_tokens(document)
-    # forme : [n_tokens, dimension]
-
-    # Etape 2 : le decoupage intervient APRES, au niveau des vecteurs.
-    vecteurs_chunks = []
-    for debut, fin in frontieres:
-        # Mean pooling sur des tokens deja contextualises
-        vecteurs_chunks.append(vecteurs_tokens[debut:fin].mean(axis=0))
-
-    return vecteurs_chunks
+    return [vecteurs_tokens[debut:fin].mean(axis=0) for debut, fin in frontieres]
 
 
-def frontieres_en_tokens(document: str, chunk_size_chars: int,
-                         tokenizer) -> list[tuple[int, int]]:
-    """
-    Convertit des frontieres de chunks CARACTERES (celles que votre
-    splitter habituel produit) en frontieres TOKENS, requises par
-    late_chunking(). C'est l'etape qui manque dans la plupart des
-    exemples publies, et qui bloque une premiere integration.
-    """
-    frontieres = []
-    for debut_c in range(0, len(document), chunk_size_chars):
-        fin_c = min(debut_c + chunk_size_chars, len(document))
-        debut_t = len(tokenizer.encode(document[:debut_c]))
-        fin_t = len(tokenizer.encode(document[:fin_c]))
-        frontieres.append((debut_t, fin_t))
+def frontieres_en_tokens(
+    document: str,
+    chunk_size_chars: int,
+    tokenizer: tiktoken.Encoding,
+) -> list[tuple[int, int]]:
+    frontieres: list[tuple[int, int]] = []
+    for debut_caractere in range(0, len(document), chunk_size_chars):
+        fin_caractere = min(debut_caractere + chunk_size_chars, len(document))
+        debut_token = len(tokenizer.encode(document[:debut_caractere]))
+        fin_token = len(tokenizer.encode(document[:fin_caractere]))
+        if fin_token > debut_token:
+            frontieres.append((debut_token, fin_token))
     return frontieres
 
 
-# --- Exemple d'utilisation, de bout en bout -------------------------
-#
-# frontieres = frontieres_en_tokens(document, chunk_size_chars=2000,
-#                                    tokenizer=modele_long_contexte.tokenizer)
-# vecteurs   = late_chunking(document, modele_long_contexte, frontieres)
-#
-# for (debut, fin), vecteur in zip(frontieres, vecteurs):
-#     texte_chunk = document[debut:fin]   # pour l'affichage / citation
-#     vector_store.ajouter(vecteur=vecteur, texte=texte_chunk)
-#
-# La difference avec un pipeline standard tient en deux lignes :
-#
-#   STANDARD       texte_chunk = document[debut:fin]
-#                  vecteur     = modele.encode(texte_chunk)
-#                  -> le vecteur ne "voit" que le chunk
-#
-#   LATE CHUNKING  tokens  = modele.encode_tokens(document)
-#                  vecteur = tokens[debut:fin].mean(axis=0)
-#                  -> le vecteur porte le contexte du document entier
+if __name__ == "__main__":
+    document = (
+        "Les retours sont acceptés sous trente jours. "
+        "La livraison standard prend cinq jours ouvrés."
+    )
+    modele = ModeleLongContextePedagogique()
+    frontieres = frontieres_en_tokens(document, 45, modele.tokenizer)
+    vecteurs = late_chunking(document, modele, frontieres)
+    for frontiere, vecteur in zip(frontieres, vecteurs, strict=True):
+        texte = modele.tokenizer.decode(modele.tokenizer.encode(document)[slice(*frontiere)])
+        print(frontiere, repr(texte), "->", np.round(vecteur[:3], 3))

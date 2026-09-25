@@ -117,6 +117,7 @@ def test_docurag_ingests_sample_documents() -> None:
 def test_notebooks_are_clean_colab_notebooks() -> None:
     paths = [
         ROOT / "chapters/chapitre-02-premier-rag/02_premier_rag.ipynb",
+        ROOT / "chapters/chapitre-03-donnees-et-chunking/03_donnees_et_chunking.ipynb",
         ROOT / "chapters/chapitre-09-docurag/09_docurag.ipynb",
     ]
     for path in paths:

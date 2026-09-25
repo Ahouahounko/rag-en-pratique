@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)          # frozen : l'objet ne change plus apres creation
 class ChunkEnrichi:
     """
@@ -37,3 +38,17 @@ class ChunkEnrichi:
             "fin_char":   self.fin_char,
             "langue":     self.langue,
         }
+
+
+if __name__ == "__main__":
+    chunk = ChunkEnrichi(
+        texte="Vérifiez le plafond de la carte.",
+        source="manuel_paiement.md",
+        chemin="Paiement > Cartes refusées",
+        index=0,
+        page=3,
+        debut_char=120,
+        fin_char=154,
+    )
+    print(chunk.texte_a_vectoriser())
+    print(chunk.metadonnees())

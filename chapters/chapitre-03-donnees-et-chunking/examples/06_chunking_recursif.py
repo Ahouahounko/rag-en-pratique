@@ -1,23 +1,27 @@
+"""Découpage récursif qui privilégie les frontières Markdown."""
+
+import tiktoken
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-splitter = RecursiveCharacterTextSplitter(
-    chunk_size      = 640,               # budget ajuste au francais
-    chunk_overlap   = 64,                # 10 %
-    length_function = compter_tokens,    # en tokens, cf. listing precedent
-    separators = [
-        "\n## ",     # <-- titres Markdown D'ABORD : les sections
-        "\n### ",    #     restent intactes tant qu'elles tiennent
-        "\n\n",      # paragraphes
-        "\n",        # lignes
-        ". ",        # phrases
-        " ",         # mots
-        "",          # caracteres (dernier recours)
-    ],
-)
+ENCODER = tiktoken.get_encoding("cl100k_base")
 
-chunks = splitter.split_text(document)
 
-# Sans les deux premieres lignes de la liste, une section Markdown
-# de 300 tokens suivie d'une autre de 400 sera regroupee dans un
-# meme chunk de 640 : deux sujets, un seul vecteur, et aucune
-# requete ne lui correspondra vraiment.
+def compter_tokens(texte: str) -> int:
+    return len(ENCODER.encode(texte))
+
+
+def decoupage_recursif(document: str, taille: int = 120, overlap: int = 12) -> list[str]:
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=taille,
+        chunk_overlap=overlap,
+        length_function=compter_tokens,
+        separators=["\n## ", "\n### ", "\n\n", "\n", ". ", " ", ""],
+    )
+    return splitter.split_text(document)
+
+
+if __name__ == "__main__":
+    document = "# Guide\n\n## Retours\n\n" + "Retour accepté sous 30 jours. " * 15
+    document += "\n## Livraison\n\n" + "Livraison en trois à cinq jours. " * 15
+    for index, chunk in enumerate(decoupage_recursif(document), start=1):
+        print(f"Chunk {index} ({compter_tokens(chunk)} tokens) :", repr(chunk[:70]))

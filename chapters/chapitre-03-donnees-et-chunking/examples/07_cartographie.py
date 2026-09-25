@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass
 
+
 @dataclass
 class SectionDocument:
     """Une zone thematiquement coherente : la future cloison etanche."""
@@ -42,3 +43,17 @@ def cartographier_markdown(texte: str) -> list[SectionDocument]:
         ))
 
     return sections
+
+
+if __name__ == "__main__":
+    markdown = """# Manuel
+Introduction générale.
+## Paiement
+Les cartes sont acceptées.
+### Échecs
+Vérifiez le plafond de la carte.
+## Livraison
+Le colis est suivi.
+"""
+    for section in cartographier_markdown(markdown):
+        print(section.chemin, "->", section.contenu)

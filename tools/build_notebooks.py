@@ -86,6 +86,119 @@ else:
 print("Configuration chargée pour", PROVIDER)
 '''
 
+CHAPTER_3_BOOTSTRAP = f'''import os
+import subprocess
+import sys
+from pathlib import Path
+
+if not Path("src").is_dir():
+    if not Path("rag-en-pratique").is_dir():
+        subprocess.run(["git", "clone", "{REPOSITORY_URL}.git"], check=True)
+    os.chdir("rag-en-pratique")
+
+subprocess.run(
+    [sys.executable, "-m", "pip", "install", "-q", "-e", ".[chunking]"],
+    check=True,
+)
+print("Environnement du chapitre 3 prêt :", Path.cwd())
+'''
+
+CHAPTER_3_OPENAI = '''# @title Exemple 14 — activer OpenAI seulement si vous avez une clé
+UTILISER_OPENAI = False # @param {type:"boolean"}
+
+if UTILISER_OPENAI:
+    import os
+    import subprocess
+    import sys
+    from getpass import getpass
+
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-q", "-e", ".[openai]"],
+        check=True,
+    )
+    if not os.getenv("OPENAI_API_KEY"):
+        os.environ["OPENAI_API_KEY"] = getpass("OPENAI_API_KEY : ")
+    if not os.getenv("OPENAI_MODEL"):
+        os.environ["OPENAI_MODEL"] = input("OPENAI_MODEL : ").strip()
+    print("OpenAI est prêt pour l'exemple 14.")
+else:
+    print("OpenAI désactivé : tous les autres exemples restent exécutables.")
+'''
+
+
+def chapter_3() -> dict[str, object]:
+    badge = (
+        "https://colab.research.google.com/github/Ahouahounko/rag-en-pratique/"
+        "blob/main/chapters/chapitre-03-donnees-et-chunking/03_donnees_et_chunking.ipynb"
+    )
+    examples = ROOT / "chapters/chapitre-03-donnees-et-chunking/examples"
+    lessons = [
+        ("01_comptage_tokens.py", "Compter les tokens", "Comparer caractères et tokens avant tout découpage."),
+        ("02_validation_taille.py", "Valider les tailles", "Détecter les chunks qui dépasseraient le budget."),
+        ("03_fusion_overlap.py", "Fusionner les chevauchements", "Reconstruire un passage sans répéter l'overlap."),
+        ("04_chunking_fixe.py", "Ligne de base fixe", "Établir une référence simple avant les stratégies avancées."),
+        ("05_mecanisme_recursif.py", "Comprendre la récursion", "Passer progressivement des grandes frontières aux petites."),
+        ("06_chunking_recursif.py", "Respecter Markdown", "Prioriser sections, paragraphes, phrases puis mots."),
+        ("07_cartographie.py", "Cartographier le document", "Conserver le chemin hiérarchique de chaque section."),
+        ("08_context_prepending.py", "Ajouter le contexte", "Distinguer le texte vectorisé des métadonnées stockées."),
+        ("09_chunking_ast.py", "Découper du code Python", "Préserver fonctions, classes, imports et numéros de ligne."),
+        ("10_chunking_tableaux.py", "Préserver les tableaux", "Répéter l'en-tête pour que chaque fragment reste lisible."),
+        ("11_chunking_semantique.py", "Détecter les ruptures", "Utiliser un embedding TF-IDF local et explicable."),
+        ("12_semantique_accumulation.py", "Accumuler par cohérence", "Comparer chaque segment au centre du chunk courant."),
+        ("13_parent_child.py", "Indexation Parent-Child", "Chercher des enfants précis et restituer leurs parents."),
+        ("14_contextual_retrieval.py", "Contextual Retrieval", "Seul exemple facultatif qui appelle OpenAI."),
+        ("15_late_chunking.py", "Late Chunking", "Découper les vecteurs après encodage global."),
+        ("16_grid_search.py", "Comparer les réglages", "Évaluer plusieurs tailles, overlaps et stratégies."),
+    ]
+    cells = [
+        markdown(
+            f"# Chapitre 3 — Données et chunking\n\n"
+            f"[![Ouvrir dans Colab](https://colab.research.google.com/assets/colab-badge.svg)]({badge})\n\n"
+            "Ce laboratoire transforme les 16 extraits du chapitre en expériences exécutables. "
+            "Les exemples 1 à 13, 15 et 16 sont locaux. Seul l'exemple 14 peut appeler OpenAI."
+        ),
+        markdown(
+            "## Objectifs pédagogiques\n\n"
+            "À la fin du notebook, vous saurez mesurer un budget de tokens, comparer plusieurs "
+            "découpages, préserver la structure, enrichir les métadonnées et évaluer les réglages."
+        ),
+        markdown("## 0. Préparer Colab ou Jupyter\n\nCette cellule installe uniquement les outils de chunking."),
+        code(CHAPTER_3_BOOTSTRAP),
+        markdown(
+            "## Document fil rouge\n\n"
+            "Chaque script contient son propre petit jeu de données afin de pouvoir aussi être lancé séparément."
+        ),
+    ]
+    for index, (filename, title, explanation) in enumerate(lessons, start=1):
+        if filename == "14_contextual_retrieval.py":
+            cells.extend(
+                [
+                    markdown(
+                        "## Configuration facultative pour OpenAI\n\n"
+                        "Laissez la case décochée si vous n'avez pas de clé : cela ne bloque aucun autre exemple."
+                    ),
+                    code(CHAPTER_3_OPENAI),
+                ]
+            )
+        source = (examples / filename).read_text(encoding="utf-8")
+        cells.extend(
+            [
+                markdown(
+                    f"## {index}. {title}\n\n{explanation}\n\n"
+                    f"Script correspondant : [`{filename}`](examples/{filename})"
+                ),
+                code("# ruff: noqa: F811\n" + source),
+            ]
+        )
+    cells.append(
+        markdown(
+            "## Bilan\n\n"
+            "Il n'existe pas de taille universelle. Mesurez les tokens, conservez les métadonnées "
+            "de position, puis comparez les stratégies sur des questions représentatives de votre corpus."
+        )
+    )
+    return notebook(cells)
+
 
 def chapter_2() -> dict[str, object]:
     badge = (
@@ -309,6 +422,10 @@ def write(path: Path, payload: dict[str, object]) -> None:
 
 def main() -> None:
     write(ROOT / "chapters/chapitre-02-premier-rag/02_premier_rag.ipynb", chapter_2())
+    write(
+        ROOT / "chapters/chapitre-03-donnees-et-chunking/03_donnees_et_chunking.ipynb",
+        chapter_3(),
+    )
     write(ROOT / "chapters/chapitre-09-docurag/09_docurag.ipynb", chapter_9())
 
 

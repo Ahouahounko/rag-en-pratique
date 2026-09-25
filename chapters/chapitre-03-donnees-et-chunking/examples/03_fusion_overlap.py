@@ -28,3 +28,11 @@ def fusionner_chunks_voisins(chunks: list[dict]) -> str:
         fin_courante = max(fin_courante, chunk["end_pos"])
 
     return " ".join(morceaux)
+
+
+if __name__ == "__main__":
+    exemple = [
+        {"text": "Le délai est de trente jours.", "start_pos": 0, "end_pos": 30},
+        {"text": "jours. Le remboursement suit.", "start_pos": 24, "end_pos": 53},
+    ]
+    print(fusionner_chunks_voisins(exemple))

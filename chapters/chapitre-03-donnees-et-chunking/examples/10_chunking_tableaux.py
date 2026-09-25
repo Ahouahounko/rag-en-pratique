@@ -1,26 +1,24 @@
+"""Découpage d'un tableau Markdown avec Chonkie."""
+
 from chonkie import TableChunker
 
-# TableChunker respecte la regle : un tableau tient dans un seul
-# chunk s'il rentre dans le budget ; sinon il decoupe par groupes
-# de lignes EN REPETANT l'en-tete dans chaque fragment.
-chunker = TableChunker(
-    tokenizer="cl100k_base",
-    chunk_size=800,          # budget par chunk
-    repeat_header=True,      # <-- la ligne qui evite les colonnes anonymes
-)
-
-tableau_markdown = """
+TABLEAU_MARKDOWN = """
 | Client   | Montant | Statut   |
 |----------|---------|----------|
-| Dupont   | 15000   | Regle    |
+| Dupont   | 15000   | Réglé    |
 | Martin   | 8200    | En cours |
-...
+| Mensah   | 9100    | Réglé    |
+| Diallo   | 7300    | En cours |
 """
 
-chunks = chunker.chunk(tableau_markdown)
 
-for c in chunks:
-    # Chaque fragment contient encore la ligne d'en-tete :
-    # "Ligne 12 : Client=Dupont, Montant=15000, Statut=Regle"
-    # reste interpretable isolement, meme hors contexte.
-    print(c.text[:80], "...")
+def decouper_tableau(tableau: str, lignes_par_chunk: int = 2) -> list[str]:
+    """Retourne des fragments dont chacun conserve l'en-tête du tableau."""
+
+    chunker = TableChunker(chunk_size=lignes_par_chunk)
+    return [chunk.text for chunk in chunker(tableau)]
+
+
+if __name__ == "__main__":
+    for index, chunk in enumerate(decouper_tableau(TABLEAU_MARKDOWN), start=1):
+        print(f"--- Fragment {index} ---\n{chunk}")
