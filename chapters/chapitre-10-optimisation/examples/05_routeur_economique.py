@@ -1,64 +1,89 @@
-from enum import Enum
+"""Routage économique en deux étages avec génération OpenAI."""
 
-from langchain_openai import ChatOpenAI
+from __future__ import annotations
+
+import os
+from collections.abc import Callable
+from enum import Enum
 
 
 class Complexite(Enum):
-    SIMPLE = "simple"        # reponse directe, un seul passage
-    MOYENNE = "moyenne"      # synthese de deux ou trois passages
-    COMPLEXE = "complexe"    # raisonnement multi-documents, ou critique
+    SIMPLE = "simple"
+    MOYENNE = "moyenne"
+    COMPLEXE = "complexe"
 
 
-MODELES = {
-    Complexite.SIMPLE:   "gpt-4o-mini",
-    Complexite.MOYENNE:  "gpt-4o-mini",
-    Complexite.COMPLEXE: "gpt-4o",
-}
+SUJETS_CRITIQUES = (
+    "juridique",
+    "medical",
+    "médical",
+    "contrat",
+    "sanction",
+    "licenciement",
+    "conformite",
+    "conformité",
+)
+MARQUEURS_SIMPLES = ("quel est", "combien", "quand", "qui est", "quel montant")
+MARQUEURS_COMPLEXES = (
+    "compare",
+    "implique",
+    "synthèse",
+    "synthese",
+    "analyse",
+    "impact de",
+    "différence entre",
+    "difference entre",
+    "pourquoi",
+)
 
-# Sujets ou l'erreur coute cher : ils partent au modele principal
-# quelle que soit la simplicite apparente de la question.
-SUJETS_CRITIQUES = ("juridique", "medical", "contrat", "sanction",
-                    "licenciement", "conformite")
 
-MARQUEURS_SIMPLES = ("quel est", "combien", "quand", "qui est",
-                     "quelle est la date", "quel montant")
-MARQUEURS_COMPLEXES = ("compare", "implique", "synthese", "analyse",
-                       "impact de", "difference entre", "pourquoi")
-
-
-def classer(question: str, classifieur=None) -> Complexite:
-    """Deux etages : heuristique gratuite, puis modele si besoin."""
-    texte = question.lower()
-
-    # --- Etage 1 : gratuit, tranche la majorite des cas ---
+def classer(
+    question: str,
+    classifieur: Callable[[str], str] | None = None,
+) -> Complexite:
+    texte = question.casefold()
     if any(sujet in texte for sujet in SUJETS_CRITIQUES):
-        return Complexite.COMPLEXE          # la criticite prime
-
-    if any(m in texte for m in MARQUEURS_COMPLEXES):
         return Complexite.COMPLEXE
-
-    if any(m in texte for m in MARQUEURS_SIMPLES) and len(texte.split()) < 15:
+    if any(marker in texte for marker in MARQUEURS_COMPLEXES):
+        return Complexite.COMPLEXE
+    if any(marker in texte for marker in MARQUEURS_SIMPLES) and len(texte.split()) < 15:
         return Complexite.SIMPLE
-
-    # --- Etage 2 : on ne paie un appel que sur les cas ambigus ---
     if classifieur is None:
-        return Complexite.MOYENNE           # repli prudent
-
-    verdict = classifieur.invoke(f"""Classe cette question :
-- "simple"   : reponse directe dans un seul passage
-- "moyenne"  : synthese de deux ou trois passages
-- "complexe" : raisonnement multi-documents, ou question critique
-
-Question : {question}
-
-Un seul mot :""").content.strip().lower()
-
+        return Complexite.MOYENNE
     try:
-        return Complexite(verdict)
+        return Complexite(classifieur(question).strip().lower())
     except ValueError:
         return Complexite.MOYENNE
 
 
-def modele_pour(question: str, classifieur=None) -> ChatOpenAI:
-    complexite = classer(question, classifieur)
-    return ChatOpenAI(model=MODELES[complexite], temperature=0)
+def modele_pour(complexite: Complexite) -> str:
+    small = os.getenv("OPENAI_SMALL_MODEL") or os.getenv("OPENAI_MODEL")
+    large = os.getenv("OPENAI_LARGE_MODEL") or os.getenv("OPENAI_MODEL")
+    selected = large if complexite is Complexite.COMPLEXE else small
+    if not selected:
+        raise RuntimeError("Configurez OPENAI_MODEL ou les variantes SMALL/LARGE")
+    return selected
+
+
+def repondre(
+    question: str,
+    *,
+    instructions: str,
+    classifieur: Callable[[str], str] | None = None,
+    client=None,
+) -> tuple[str, Complexite, str]:
+    complexity = classer(question, classifieur)
+    model = modele_pour(complexity)
+    if client is None:
+        if not os.getenv("OPENAI_API_KEY"):
+            raise RuntimeError("OPENAI_API_KEY n'est pas configurée")
+        from openai import OpenAI
+
+        client = OpenAI()
+    response = client.responses.create(model=model, instructions=instructions, input=question)
+    return str(response.output_text), complexity, model
+
+
+if __name__ == "__main__":
+    for example in ("Quel est le délai ?", "Compare les trois politiques", "Explique la règle"):
+        print(example, "->", classer(example).value)

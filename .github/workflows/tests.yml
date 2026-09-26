@@ -15,7 +15,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Installer le projet
-        run: pip install -e ".[app,dev,chunking,observability,prompting,retrieval,vectorstores]"
+        run: pip install -e ".[app,dev,chunking,observability,optimization,prompting,retrieval,vectorstores]"
       - name: Vérifier le style
         run: >-
           ruff check
@@ -37,5 +37,7 @@ jobs:
           chapters/chapitre-08-observabilite/runnable
           chapters/chapitre-09-docurag/examples
           chapters/chapitre-09-docurag/runnable
+          chapters/chapitre-10-optimisation/examples
+          chapters/chapitre-10-optimisation/runnable
       - name: Exécuter les tests
         run: pytest

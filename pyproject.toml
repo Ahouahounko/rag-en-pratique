@@ -39,6 +39,9 @@ observability = [
   "numpy>=2,<3",
   "scipy>=1.14,<2",
 ]
+optimization = [
+  "numpy>=2,<3",
+]
 vectorstores = [
   "faiss-cpu>=1.9,<2",
   "numpy>=2,<3",

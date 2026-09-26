@@ -91,7 +91,9 @@ Les exemples RAG acceptent OpenAI, Hugging Face ou Ollama. Configurez
 - [Chapitre 8 — Observabilité](chapters/chapitre-08-observabilite/08_observabilite.ipynb) :
   jeux de référence, juges, attribution, latence et détection de dérive ;
 - [Chapitre 9 — DocuRAG](chapters/chapitre-09-docurag/09_docurag.ipynb) :
-  application modulaire et parcours complet.
+  application modulaire et parcours complet ;
+- [Chapitre 10 — Optimisation](chapters/chapitre-10-optimisation/10_optimisation.ipynb) :
+  streaming, cache, compression, routage économique et embeddings par lots.
 
 Ces notebooks proposent un sélecteur OpenAI, Hugging Face ou Ollama. Consultez
 [le guide des fournisseurs](docs/model-providers.md).

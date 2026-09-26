@@ -1,48 +1,81 @@
+"""Diffusion SSE d'une réponse OpenAI avec sources en dernier événement."""
+
+from __future__ import annotations
+
 import json
-
-from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
-from langchain_openai import ChatOpenAI
-
-app = FastAPI()
+import os
+from collections.abc import Iterable, Iterator, Sequence
+from dataclasses import dataclass
 
 
-async def flux_reponse(question: str, retriever, gabarit: str):
-    """Genere la reponse en flux.
+@dataclass(frozen=True)
+class Passage:
+    texte: str
+    source: str
+    page: int = 0
 
-    Le retrieval et la construction du prompt restent synchrones :
-    ils durent moins de 300 ms au total, donc l'utilisateur voit
-    du texte apparaitre avant meme de remarquer l'attente.
-    """
-    passages = retriever.chercher(question)
-    contexte = "\n\n".join(p.texte for p in passages)
-    prompt = gabarit.format(contexte=contexte, question=question)
 
-    modele = ChatOpenAI(model="gpt-4o", temperature=0, streaming=True)
+def _client(client=None):
+    if client is not None:
+        return client
+    if not os.getenv("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY n'est pas configurée")
+    from openai import OpenAI
 
-    async for fragment in modele.astream(prompt):
-        if fragment.content:
-            yield f"data: {fragment.content}\n\n"
+    return OpenAI()
 
-    # Les sources partent APRES le texte : l'interface les affiche
-    # sous la reponse une fois celle-ci complete.
-    sources = [{"source": p.source, "page": p.page} for p in passages]
-    yield f"data: {json.dumps({'sources': sources})}\n\n"
+
+def evenements_sse(
+    question: str,
+    passages: Sequence[Passage],
+    *,
+    model: str | None = None,
+    client=None,
+) -> Iterator[str]:
+    """Émet les deltas de texte, les sources, puis le marqueur de fin."""
+
+    selected_model = model or os.getenv("OPENAI_MODEL")
+    if not selected_model:
+        raise RuntimeError("Configurez OPENAI_MODEL avant d'activer le streaming")
+    contexte = "\n\n".join(
+        f"[doc_{index}] {passage.source}, page {passage.page}\n{passage.texte}"
+        for index, passage in enumerate(passages, start=1)
+    )
+    stream: Iterable[object] = _client(client).responses.create(
+        model=selected_model,
+        instructions=(
+            "Réponds uniquement à partir des extraits. "
+            "Cite chaque affirmation avec [doc_N]."
+        ),
+        input=f"EXTRAITS\n{contexte}\n\nQUESTION\n{question}",
+        stream=True,
+    )
+    for event in stream:
+        if getattr(event, "type", "") == "response.output_text.delta":
+            delta = getattr(event, "delta", "")
+            if delta:
+                yield f"data: {json.dumps({'delta': delta}, ensure_ascii=False)}\n\n"
+
+    sources = [
+        {"source": passage.source, "page": passage.page}
+        for passage in passages
+    ]
+    yield f"data: {json.dumps({'sources': sources}, ensure_ascii=False)}\n\n"
     yield "data: [FIN]\n\n"
 
 
-@app.post("/query/stream")
-async def interroger_en_flux(requete: dict):
+def reponse_streaming(question: str, retriever, **kwargs: object):
+    """Adaptateur FastAPI facultatif, importé seulement si nécessaire."""
+
+    from fastapi.responses import StreamingResponse
+
+    passages = retriever.chercher(question)
     return StreamingResponse(
-        flux_reponse(requete["question"],
-                     app.state.retriever,
-                     app.state.gabarit),
+        evenements_sse(question, passages, **kwargs),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            # Sans cette ligne, Nginx tamponne la reponse et
-            # l'utilisateur recoit tout d'un bloc a la fin :
-            # tout le benefice du streaming disparait.
-            "X-Accel-Buffering": "no",
-        },
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+if __name__ == "__main__":
+    print("Exemple prêt : configurez OPENAI_API_KEY et OPENAI_MODEL, puis appelez evenements_sse().")

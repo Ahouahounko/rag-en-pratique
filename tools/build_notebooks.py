@@ -124,6 +124,51 @@ sys.path.insert(0, str(Path("chapters/chapitre-09-docurag/runnable").resolve()))
 print("Environnement DocuRAG prêt :", Path.cwd())
 '''
 
+CHAPTER_10_BOOTSTRAP = f'''import os
+import subprocess
+import sys
+from pathlib import Path
+
+if not Path("src").is_dir():
+    if not Path("rag-en-pratique").is_dir():
+        subprocess.run(["git", "clone", "{REPOSITORY_URL}.git"], check=True)
+    os.chdir("rag-en-pratique")
+
+subprocess.run(
+    [sys.executable, "-m", "pip", "install", "-q", "-e", ".[app,optimization]"],
+    check=True,
+)
+print("Environnement du chapitre 10 prêt :", Path.cwd())
+'''
+
+CHAPTER_10_MODELS = '''# @title Activer uniquement les modèles que vous voulez utiliser
+UTILISER_OPENAI = False # @param {type:"boolean"}
+UTILISER_HUGGINGFACE = False # @param {type:"boolean"}
+
+import os
+import subprocess
+import sys
+from getpass import getpass
+
+if UTILISER_OPENAI:
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", ".[openai]"], check=True)
+    if not os.getenv("OPENAI_API_KEY"):
+        os.environ["OPENAI_API_KEY"] = getpass("OPENAI_API_KEY : ")
+    if not os.getenv("OPENAI_MODEL"):
+        os.environ["OPENAI_MODEL"] = input("OPENAI_MODEL : ").strip()
+    os.environ.setdefault("OPENAI_SMALL_MODEL", os.environ["OPENAI_MODEL"])
+    os.environ.setdefault("OPENAI_LARGE_MODEL", os.environ["OPENAI_MODEL"])
+
+if UTILISER_HUGGINGFACE:
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-q", "-e", ".[huggingface]"],
+        check=True,
+    )
+
+print("OpenAI :", "actif" if UTILISER_OPENAI else "inactif")
+print("Hugging Face :", "actif" if UTILISER_HUGGINGFACE else "inactif")
+'''
+
 CHAPTER_3_OPENAI = '''# @title Exemple 14 — activer OpenAI seulement si vous avez une clé
 UTILISER_OPENAI = False # @param {type:"boolean"}
 
@@ -958,6 +1003,103 @@ print("Sources :", result["sources"])
     return notebook(cells)
 
 
+def chapter_10() -> dict[str, object]:
+    badge = (
+        "https://colab.research.google.com/github/Ahouahounko/rag-en-pratique/"
+        "blob/main/chapters/chapitre-10-optimisation/10_optimisation.ipynb"
+    )
+    examples = ROOT / "chapters/chapitre-10-optimisation/examples"
+    lessons = [
+        (
+            "01_streaming.py",
+            "Streaming SSE",
+            "Réduire la latence perçue en envoyant les deltas, puis les sources et la fin.",
+        ),
+        (
+            "02_cache_semantique.py",
+            "Cache sémantique",
+            "Réutiliser une réponse proche avec TTL, éviction LRU et taux de succès.",
+        ),
+        (
+            "03_token_pruning.py",
+            "Token pruning",
+            "Conserver uniquement les phrases pertinentes avec un classifieur Hugging Face.",
+        ),
+        (
+            "04_summarize_chunks.py",
+            "Résumé sélectif",
+            "Résumer seulement les chunks qui dépassent le budget de contexte.",
+        ),
+        (
+            "05_routeur_economique.py",
+            "Routage économique",
+            "Choisir un modèle selon la complexité et la criticité de la question.",
+        ),
+        (
+            "06_batch_embedding.py",
+            "Embeddings par lots",
+            "Préserver l'ordre, reprendre après erreur temporaire et suivre la progression.",
+        ),
+    ]
+    cells = [
+        markdown(
+            f"# Chapitre 10 — Optimiser latence, coûts et scalabilité\n\n"
+            f"[![Ouvrir dans Colab](https://colab.research.google.com/assets/colab-badge.svg)]({badge})\n\n"
+            "Ce notebook transforme les six extraits du chapitre en expériences exécutables. "
+            "OpenAI n'est utilisé que pour le streaming, le résumé et le routage ; "
+            "Hugging Face est facultatif pour le token pruning."
+        ),
+        markdown(
+            "## Ressources utiles\n\n"
+            "- [OpenAI Docs — Prompt Caching](https://developers.openai.com/api/docs/guides/prompt-caching)\n"
+            "- [OpenAI Docs — Batch API](https://developers.openai.com/api/docs/guides/batch)\n"
+            "- [OpenAI Docs — optimisation de la latence](https://developers.openai.com/api/docs/guides/latency-optimization)\n"
+            "- [Hugging Face — pipelines Transformers](https://huggingface.co/docs/transformers/main_classes/pipelines)"
+        ),
+        markdown("## 0. Préparer Colab ou Jupyter"),
+        code(CHAPTER_10_BOOTSTRAP),
+        markdown(
+            "## Modèles facultatifs\n\n"
+            "Laissez les deux cases décochées pour exécuter les démonstrations locales. "
+            "La clé OpenAI est saisie de manière masquée et n'est jamais enregistrée."
+        ),
+        code(CHAPTER_10_MODELS),
+    ]
+    for index, (filename, title, explanation) in enumerate(lessons, start=1):
+        source = (examples / filename).read_text(encoding="utf-8")
+        cells.extend(
+            [
+                markdown(
+                    f"## {index}. {title}\n\n{explanation}\n\n"
+                    f"Script correspondant : [`{filename}`](examples/{filename})"
+                ),
+                code("# ruff: noqa: F811\n" + source),
+            ]
+        )
+    cells.extend(
+        [
+            markdown("## Exécuter les six démonstrations locales"),
+            code(
+                '''import subprocess
+import sys
+
+subprocess.run(
+    [sys.executable, "chapters/chapitre-10-optimisation/runnable/run_chapter.py"],
+    check=True,
+)
+'''
+            ),
+            markdown(
+                "## Bilan\n\n"
+                "Optimisez dans cet ordre : mesure, latence perçue, suppression du travail inutile, "
+                "réduction du contexte, routage des modèles, puis parallélisation et mise à l'échelle. "
+                "Chaque optimisation doit conserver les métriques de qualité du chapitre 7."
+            ),
+        ]
+    )
+    return notebook(cells)
+
+
 def write(path: Path, payload: dict[str, object]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(path.relative_to(ROOT))
@@ -984,6 +1126,7 @@ def main() -> None:
     write(ROOT / "chapters/chapitre-07-evaluation/07_evaluation.ipynb", chapter_7())
     write(ROOT / "chapters/chapitre-08-observabilite/08_observabilite.ipynb", chapter_8())
     write(ROOT / "chapters/chapitre-09-docurag/09_docurag.ipynb", chapter_9())
+    write(ROOT / "chapters/chapitre-10-optimisation/10_optimisation.ipynb", chapter_10())
 
 
 if __name__ == "__main__":
