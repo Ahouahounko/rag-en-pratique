@@ -1,41 +1,37 @@
-"""API FastAPI minimale exposant le pipeline DocuRAG multi-fournisseur."""
+"""API FastAPI exposant ingestion, santé et interrogation DocuRAG."""
 
 from __future__ import annotations
 
+import sys
+import time
 from pathlib import Path
 
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
-from rag_en_pratique.core import (
-    Document,
-    InMemoryVectorStore,
-    RAGPipeline,
-    split_documents,
-)
-from rag_en_pratique.providers import create_provider
+RUNNABLE = Path("chapters/chapitre-09-docurag/runnable").resolve()
+sys.path.insert(0, str(RUNNABLE))
+
+from docurag import DocuRAG
 
 
 class QueryRequest(BaseModel):
     question: str = Field(min_length=3)
-    top_k: int = Field(default=3, ge=1, le=10)
+    department: str | None = None
 
 
-def build_pipeline() -> RAGPipeline:
-    repository = Path(__file__).resolve().parents[3]
-    documents = [
-        Document(path.read_text(encoding="utf-8"), {"source": path.name})
-        for path in sorted((repository / "data" / "sample").glob("*.md"))
-        if path.name.lower() != "readme.md"
-    ]
-    provider = create_provider()
-    store = InMemoryVectorStore(provider.embedder)
-    store.add(split_documents(documents, chunk_size=80, overlap=15))
-    return RAGPipeline(store, provider.generator)
+class IngestionRequest(BaseModel):
+    rebuild: bool = False
+
+
+def build_pipeline() -> DocuRAG:
+    docurag = DocuRAG()
+    docurag.ingest(Path("data/sample"), rebuild=True)
+    return docurag
 
 
 app = FastAPI(title="DocuRAG", version="1.0.0")
-pipeline: RAGPipeline | None = None
+pipeline: DocuRAG | None = None
 
 
 @app.on_event("startup")
@@ -45,12 +41,28 @@ def startup() -> None:
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok" if pipeline else "initializing"}
+def health() -> dict[str, object]:
+    return {
+        "status": "ok" if pipeline else "initializing",
+        "indexed_chunks": len(pipeline.store.documents) if pipeline else 0,
+    }
+
+
+@app.post("/ingest")
+def ingest(request: IngestionRequest) -> dict[str, int]:
+    if pipeline is None:
+        raise RuntimeError("Le pipeline n'est pas initialisé")
+    repository = Path.cwd()
+    count = pipeline.ingest(repository / "data" / "sample", rebuild=request.rebuild)
+    return {"indexed_chunks": count}
 
 
 @app.post("/query")
 def query(request: QueryRequest) -> dict[str, object]:
     if pipeline is None:
         raise RuntimeError("Le pipeline n'est pas initialisé")
-    return pipeline.ask(request.question, top_k=request.top_k)
+    started = time.perf_counter()
+    filters = {"department": request.department} if request.department else None
+    result = pipeline.ask(request.question, filters=filters)
+    result["duration_ms"] = round((time.perf_counter() - started) * 1_000)
+    return result

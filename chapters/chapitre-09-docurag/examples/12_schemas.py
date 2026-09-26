@@ -1,24 +1,36 @@
-"""Schémas d'entrée et de sortie de DocuRAG."""
+"""Contrats Pydantic de l'API DocuRAG."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from pydantic import BaseModel, Field
 
 
-@dataclass(frozen=True)
-class QuestionRequest:
-    question: str
-    top_k: int = 3
+class QuestionRequest(BaseModel):
+    question: str = Field(min_length=3, max_length=2_000)
+    department: str | None = None
 
 
-@dataclass(frozen=True)
-class SourceResponse:
-    source: str
-    text: str
-    score: float
+class SourceResponse(BaseModel):
+    document: str
+    page: int = 0
+    department: str = "general"
+    relevance: float
 
 
-@dataclass(frozen=True)
-class AnswerResponse:
+class AnswerResponse(BaseModel):
     answer: str
-    sources: list[SourceResponse] = field(default_factory=list)
+    sources: list[SourceResponse] = Field(default_factory=list)
+    confidence: str
+    passage_count: int
+    prompt_version: str
+    duration_ms: int
+
+
+class IngestionRequest(BaseModel):
+    rebuild: bool = False
+    path: str = "data/sample"
+
+
+if __name__ == "__main__":
+    request = QuestionRequest(question="Quel est le délai de livraison ?")
+    print(request.model_dump())

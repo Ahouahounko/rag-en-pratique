@@ -32,6 +32,7 @@ services:
       # lui-meme. Il faut le NOM DU SERVICE. C'est la cause
       # numero un des echecs de premier demarrage.
       QDRANT_URL: http://qdrant:6333
+      RAG_PROVIDER: ${RAG_PROVIDER:-openai}
     volumes:
       - ../documents:/app/documents:ro    # lecture seule
     depends_on:
@@ -47,7 +48,7 @@ services:
     ports:
       - "8501:8501"
     environment:
-      API_URL: http://api:8000
+      DOCURAG_API_URL: http://api:8000
     command: >
       streamlit run src/interface/app.py
       --server.port 8501 --server.address 0.0.0.0

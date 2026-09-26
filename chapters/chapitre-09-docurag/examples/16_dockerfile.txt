@@ -9,18 +9,18 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Dependances systeme requises par les loaders de documents
+# Dépendances système requises par les loaders de documents
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libmagic1 poppler-utils curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Dependances Python AVANT le code source : une modification du
-# code n'invalide alors pas le cache de cette couche, et la
-# reconstruction passe de plusieurs minutes a quelques secondes.
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
+# Le projet compagnon utilise pyproject.toml et ses extras.
+COPY pyproject.toml README.md ./
 COPY src/ ./src/
+COPY chapters/chapitre-09-docurag/runnable/ ./chapters/chapitre-09-docurag/runnable/
+COPY chapters/chapitre-09-docurag/examples/13_api_main.py ./api_main.py
+COPY data/sample/ ./data/sample/
+RUN pip install --no-cache-dir -e ".[openai,app,pdf,retrieval]"
 
 # start-period genereux : le premier demarrage telecharge le
 # modele d'embedding, ce qui prend du temps.
@@ -29,5 +29,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 \
 
 EXPOSE 8000
 
-CMD ["uvicorn", "src.api.main:app", \
+CMD ["uvicorn", "api_main:app", \
      "--host", "0.0.0.0", "--port", "8000"]

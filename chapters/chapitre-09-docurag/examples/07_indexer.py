@@ -10,8 +10,10 @@ from rag_en_pratique.providers import create_embedder
 
 
 class Indexeur:
-    def __init__(self) -> None:
-        self.store = InMemoryVectorStore(create_embedder())
+    """Index local pédagogique ; remplaçable par Qdrant en production."""
+
+    def __init__(self, provider: str | None = None, *, client=None) -> None:
+        self.store = InMemoryVectorStore(create_embedder(provider, client=client))
 
     def indexer(self, chunks: Sequence[Document]) -> int:
         self.store.add(chunks)
@@ -19,10 +21,9 @@ class Indexeur:
 
 
 def main() -> None:
-    repository = Path(__file__).resolve().parents[3]
     chunks = [
         Document(path.read_text(encoding="utf-8"), {"source": path.name})
-        for path in sorted((repository / "data" / "sample").glob("*.md"))
+        for path in sorted(Path("data/sample").glob("*.md"))
         if path.name.lower() != "readme.md"
     ]
     print(f"{Indexeur().indexer(chunks)} document(s) indexé(s)")

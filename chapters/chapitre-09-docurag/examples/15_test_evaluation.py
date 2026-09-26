@@ -6,14 +6,31 @@ from rag_en_pratique.core import Document, SearchResult
 from rag_en_pratique.providers import create_generator
 
 
-def evaluate_grounding(question: str, context: str, answer: str) -> str:
+def evaluate_grounding(
+    question: str,
+    context: str,
+    answer: str,
+    *,
+    provider: str | None = None,
+    client=None,
+) -> str:
     judge_question = (
         "Évalue si la réponse candidate est entièrement fondée sur le contexte. "
         "Réponds par VALIDE ou INVALIDE, puis justifie brièvement.\n\n"
         f"Question initiale : {question}\nRéponse candidate : {answer}"
     )
     passage = SearchResult(Document(context, {"source": "contexte_evaluation"}), 1.0)
-    return create_generator().generate(judge_question, [passage])
+    return create_generator(provider, client=client).generate(judge_question, [passage])
+
+
+def verifier_seuils(scores: dict[str, float], thresholds: dict[str, float]) -> None:
+    failures = [
+        f"{name}={scores.get(name, 0):.3f} < {threshold:.3f}"
+        for name, threshold in thresholds.items()
+        if scores.get(name, 0) < threshold
+    ]
+    if failures:
+        raise AssertionError("Régression détectée :\n" + "\n".join(failures))
 
 
 if __name__ == "__main__":

@@ -103,6 +103,27 @@ subprocess.run(
 print("Environnement du chapitre 3 prêt :", Path.cwd())
 '''
 
+CHAPTER_9_BOOTSTRAP = f'''import os
+import subprocess
+import sys
+from pathlib import Path
+
+if not Path("src").is_dir():
+    if not Path("rag-en-pratique").is_dir():
+        subprocess.run(["git", "clone", "{REPOSITORY_URL}.git"], check=True)
+    os.chdir("rag-en-pratique")
+
+provider_extra = {{"openai": "openai", "huggingface": "huggingface", "ollama": ""}}[PROVIDER]
+extras = ["app", "pdf", "retrieval"]
+if provider_extra:
+    extras.append(provider_extra)
+target = f".[{{','.join(extras)}}]"
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", target], check=True)
+sys.path.insert(0, str(Path("src").resolve()))
+sys.path.insert(0, str(Path("chapters/chapitre-09-docurag/runnable").resolve()))
+print("Environnement DocuRAG prêt :", Path.cwd())
+'''
+
 CHAPTER_3_OPENAI = '''# @title Exemple 14 — activer OpenAI seulement si vous avez une clé
 UTILISER_OPENAI = False # @param {type:"boolean"}
 
@@ -842,108 +863,99 @@ def chapter_9() -> dict[str, object]:
         "https://colab.research.google.com/github/Ahouahounko/rag-en-pratique/"
         "blob/main/chapters/chapitre-09-docurag/09_docurag.ipynb"
     )
-    return notebook(
-        [
+    examples = ROOT / "chapters/chapitre-09-docurag/examples"
+    lessons = [
+        ("01_arborescence.txt", "Architecture du projet", "Repérer les couches hors ligne, en ligne et d'interface."),
+        ("02_config.py", "Configuration centralisée", "Valider les paramètres avant de charger les modèles."),
+        ("03_env_example.txt", "Variables d'environnement", "Séparer la configuration des secrets et du code."),
+        ("04_requirements.txt", "Dépendances", "Installer seulement les extras utiles au fournisseur choisi."),
+        ("05_loader.py", "Chargement tolérant", "Enrichir chaque document avec sa source, son département et son empreinte."),
+        ("06_chunker.py", "Découpage traçable", "Préserver les métadonnées et numéroter chaque chunk."),
+        ("07_indexer.py", "Indexation vectorielle", "Injecter l'embedder OpenAI, Hugging Face ou Ollama."),
+        ("08_pipeline_ingestion.py", "Pipeline d'ingestion", "Assembler chargement, découpage et indexation."),
+        ("09_retriever.py", "Retriever hybride", "Fusionner recherche dense et lexicale par les rangs."),
+        ("10_prompts.py", "Prompts versionnés", "Rendre les règles d'ancrage et d'abstention testables."),
+        ("11_generator.py", "Réponse citée", "Produire réponse, sources, confiance et version du prompt."),
+        ("12_schemas.py", "Contrats Pydantic", "Valider les entrées et stabiliser les sorties de l'API."),
+        ("13_api_main.py", "API FastAPI", "Exposer santé, ingestion et interrogation."),
+        ("14_interface.py", "Interface Streamlit", "Afficher réponse, confiance, latence et sources."),
+        ("15_test_evaluation.py", "Garde-barrière d'évaluation", "Comparer les métriques à une ligne de base mesurée."),
+        ("16_dockerfile.txt", "Image Docker", "Construire une image reproductible de l'API."),
+        ("17_compose.yml", "Pile Docker Compose", "Orchestrer Qdrant, API et interface."),
+        ("18_demarrage.sh", "Séquence de démarrage", "Déployer puis déclencher l'ingestion complète ou incrémentale."),
+    ]
+    display_only = {"01_arborescence.txt", "03_env_example.txt", "04_requirements.txt", "16_dockerfile.txt", "17_compose.yml", "18_demarrage.sh"}
+    cells = [
             markdown(
                 f"# Chapitre 9 — DocuRAG\n\n"
                 f"[![Ouvrir dans Colab](https://colab.research.google.com/assets/colab-badge.svg)]({badge})\n\n"
-                "DocuRAG organise le pipeline du chapitre 2 en application modulaire "
-                "compatible avec OpenAI, Hugging Face et Ollama."
+                "Ce laboratoire transforme les 18 extraits du chapitre en un projet complet : "
+                "ingestion, retrieval hybride, génération citée, API, interface, évaluation et déploiement."
             ),
             markdown(
-                "## Scripts et fichiers du chapitre\n\n"
-                "1. [`01_arborescence.txt`](examples/01_arborescence.txt)\n"
-                "2. [`02_config.py`](examples/02_config.py)\n"
-                "3. [`03_env_example.txt`](examples/03_env_example.txt)\n"
-                "4. [`04_requirements.txt`](examples/04_requirements.txt)\n"
-                "5. [`05_loader.py`](examples/05_loader.py)\n"
-                "6. [`06_chunker.py`](examples/06_chunker.py)\n"
-                "7. [`07_indexer.py`](examples/07_indexer.py)\n"
-                "8. [`08_pipeline_ingestion.py`](examples/08_pipeline_ingestion.py)\n"
-                "9. [`09_retriever.py`](examples/09_retriever.py)\n"
-                "10. [`10_prompts.py`](examples/10_prompts.py)\n"
-                "11. [`11_generator.py`](examples/11_generator.py)\n"
-                "12. [`12_schemas.py`](examples/12_schemas.py)\n"
-                "13. [`13_api_main.py`](examples/13_api_main.py)\n"
-                "14. [`14_interface.py`](examples/14_interface.py)\n"
-                "15. [`15_test_evaluation.py`](examples/15_test_evaluation.py)\n"
-                "16. [`16_dockerfile.txt`](examples/16_dockerfile.txt)\n"
-                "17. [`17_compose.yml`](examples/17_compose.yml)\n"
-                "18. [`18_demarrage.sh`](examples/18_demarrage.sh)"
+                "## Ressources utiles\n\n"
+                "- [OpenAI Docs — génération de texte](https://developers.openai.com/api/docs/guides/text-generation)\n"
+                "- [OpenAI Docs — embeddings](https://developers.openai.com/api/docs/guides/embeddings)\n"
+                "- [Qdrant — documentation](https://qdrant.tech/documentation/)\n"
+                "- [FastAPI — documentation](https://fastapi.tiangolo.com/)\n"
+                "- [Streamlit — documentation](https://docs.streamlit.io/)"
             ),
             markdown(
-                "## 1. Choisir un fournisseur\n\n"
+                "## 0. Choisir un fournisseur\n\n"
                 "OpenAI et Hugging Face fonctionnent dans Colab. Ollama est destiné à "
                 "l'exécution locale, avec le serveur démarré avant le notebook."
             ),
             code(PROVIDER_SELECTION),
-            markdown("## 2. Préparer le dépôt"),
-            code(BOOTSTRAP),
-            markdown("## 3. Configurer le fournisseur"),
-            code(PROVIDER_SETUP),
+            markdown("## Préparer le dépôt et les dépendances"),
+            code(CHAPTER_9_BOOTSTRAP),
             markdown(
-                "## 4. Charger l'application DocuRAG\n\n"
-                "Configuration, chargement et chunking correspondent aux exemples 02 à 06."
+                "## Configurer le fournisseur\n\n"
+                "La clé OpenAI est demandée de manière masquée et reste uniquement en mémoire."
             ),
-            code(
-                '''import sys
-from pathlib import Path
+            code(PROVIDER_SETUP),
+    ]
+    for index, (filename, title, explanation) in enumerate(lessons, start=1):
+        source = (examples / filename).read_text(encoding="utf-8")
+        cells.append(
+            markdown(
+                f"## {index}. {title}\n\n{explanation}\n\n"
+                f"Fichier correspondant : [`{filename}`](examples/{filename})"
+            )
+        )
+        if filename in display_only:
+            language = "yaml" if filename.endswith(".yml") else "bash" if filename.endswith(".sh") else "text"
+            cells.append(markdown(f"```{language}\n{source}\n```"))
+        else:
+            cells.append(code("# ruff: noqa: E402, F811\n" + source))
 
-runnable = Path("chapters/chapitre-09-docurag/runnable").resolve()
-sys.path.insert(0, str(runnable))
+    cells.extend(
+        [
+            markdown("## Exécuter le projet intégré"),
+            code(
+                '''from pathlib import Path
 
 from docurag import DocuRAG
 from docurag.config import Settings
 
-settings = Settings.from_env()
-app = DocuRAG(settings)
-'''
-            ),
-            markdown(
-                "## 5. Ingérer et indexer un dossier\n\n"
-                "Correspond aux exemples 07 et 08. Le fournisseur choisi calcule les embeddings."
-            ),
-            code(
-                '''chunk_count = app.ingest(Path("data/sample"))
-print(f"{chunk_count} chunks indexés")
-'''
-            ),
-            markdown(
-                "## 6. Interroger DocuRAG\n\n"
-                "Correspond aux exemples 09 à 13 : retrieval, prompts, génération, schémas et API."
-            ),
-            code(
-                '''result = app.ask("Quel est le délai de livraison standard ?")
+app = DocuRAG(Settings.from_env())
+chunk_count = app.ingest(Path("data/sample"), rebuild=True)
+print(f"{chunk_count} chunk(s) indexé(s)")
+
+result = app.ask("Quel est le délai de livraison standard ?")
 print(result["answer"])
-'''
-            ),
-            markdown("## 7. Inspecter la traçabilité"),
-            code(
-                '''for rank, source in enumerate(result["sources"], start=1):
-    print(f"#{rank} score={source['score']} source={source['metadata']['source']}")
-    print(source["text"][:300])
-    print()
-'''
-            ),
-            markdown("## 8. Tester une question absente des documents"),
-            code(
-                '''unknown = app.ask("Quel est le numéro de téléphone du directeur ?")
-print(unknown["answer"])
+print("Confiance :", result["confidence"])
+print("Sources :", result["sources"])
 '''
             ),
             markdown(
-                "## 9. Interface, évaluation et déploiement\n\n"
-                "Les exemples 14 à 18 couvrent Streamlit, l'évaluation, Docker, "
-                "Compose et le démarrage.\n\n"
-                "## Architecture\n\n"
-                "- `config.py` : configuration explicite ;\n"
-                "- `loaders.py` : chargement Markdown, texte et PDF facultatif ;\n"
-                "- `pipeline.py` : ingestion, retrieval et génération ;\n"
-                "- `cli.py` : interface en ligne de commande ;\n"
-                "- `rag_en_pratique.core` : composants partagés et testables."
+                "## Bilan\n\n"
+                "DocuRAG sépare les composants pour qu'ils puissent évoluer indépendamment. "
+                "Le runner en mémoire sert à apprendre et à tester ; les fichiers Docker et Compose "
+                "montrent la cible de déploiement avec une base vectorielle persistante."
             ),
         ]
     )
+    return notebook(cells)
 
 
 def write(path: Path, payload: dict[str, object]) -> None:

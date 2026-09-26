@@ -2,13 +2,43 @@
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 from rag_en_pratique.core import Document
 
+KNOWN_DEPARTMENTS = {"rh", "finance", "juridique", "it", "produit", "commercial"}
+
+
+def fingerprint(path: Path) -> str:
+    """Calcule une empreinte du contenu, stable malgré les changements de date."""
+
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(65_536), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def department(path: Path) -> str:
+    for part in path.parts:
+        if part.lower() in KNOWN_DEPARTMENTS:
+            return part
+    return "general"
+
+
+def metadata(path: Path) -> dict[str, object]:
+    return {
+        "source": path.name,
+        "source_path": str(path),
+        "extension": path.suffix.lower(),
+        "department": department(path),
+        "fingerprint": fingerprint(path),
+    }
+
 
 def load_text(path: Path) -> Document:
-    return Document(text=path.read_text(encoding="utf-8"), metadata={"source": path.name})
+    return Document(text=path.read_text(encoding="utf-8"), metadata=metadata(path))
 
 
 def load_pdf(path: Path) -> list[Document]:
@@ -20,7 +50,7 @@ def load_pdf(path: Path) -> list[Document]:
     return [
         Document(
             text=page.extract_text() or "",
-            metadata={"source": path.name, "page": page_number},
+            metadata={**metadata(path), "page": page_number},
         )
         for page_number, page in enumerate(reader.pages, start=1)
     ]

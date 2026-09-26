@@ -1,15 +1,6 @@
-# Choisir un fournisseur depuis la racine du dépôt
-pip install -e ".[openai]"
-pip install -e ".[huggingface]"
+# Profil DocuRAG avec OpenAI, API, interface, PDF et retrieval hybride
+-e .[openai,app,pdf,retrieval]
 
-# Ollama utilise la bibliothèque standard Python ; installer puis démarrer Ollama séparément
-pip install -e .
-
-# Avec lecture PDF
-pip install -e ".[pdf]"
-
-# Avec API FastAPI et interface Streamlit
-pip install -e ".[app]"
-
-# Installation complète
-pip install -e ".[all]"
+# Pour Hugging Face, remplacer "openai" par "huggingface".
+# Pour Ollama, retirer "openai" puis démarrer Ollama séparément.
+# Le profil complet reste disponible avec : pip install -e ".[all]"

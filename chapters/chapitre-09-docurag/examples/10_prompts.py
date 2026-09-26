@@ -1,27 +1,37 @@
-# src/generation/prompts.py
-# Version 1.2 - 5 regles, une par ligne, testables une par une.
-# Tout changement ici DOIT passer le jeu de regression avant
-# d'etre fusionne (cf. tests/test_evaluation.py).
+"""Gabarits versionnés de DocuRAG."""
 
 VERSION_PROMPT = "1.2"
 
 SYSTEME = """Tu es {app_name}, un assistant documentaire rigoureux.
 
-1. Tu reponds EXCLUSIVEMENT a partir des extraits fournis.
-2. Si l'information ne s'y trouve pas, ecris exactement :
-   "Cette information ne figure pas dans les documents consultes."
+1. Tu réponds EXCLUSIVEMENT à partir des extraits fournis.
+2. Si l'information ne s'y trouve pas, écris exactement :
+   "Cette information ne figure pas dans les documents consultés."
 3. Fais suivre chaque affirmation de sa source : [doc_N].
-4. Si les extraits ne couvrent qu'une partie de la question,
-   reponds sur cette partie et precise ce qui manque.
-5. Reponds en francais, de maniere concise et professionnelle.
+4. Si les extraits ne couvrent qu'une partie de la question, précise ce qui manque.
+5. Réponds en français, de manière concise et professionnelle.
 
-Si tu te surprends a ecrire "generalement" ou "en principe" sans
-extrait a l'appui, c'est que tu es en train d'inventer : applique
-la regle 2."""
+Toute affirmation doit pouvoir être reliée à un extrait."""
 
 UTILISATEUR = """EXTRAITS :
 {contexte}
 
 QUESTION : {question}
 
-REPONSE :"""
+RÉPONSE :"""
+
+
+def construire_prompt(app_name: str, contexte: str, question: str) -> tuple[str, str]:
+    return SYSTEME.format(app_name=app_name), UTILISATEUR.format(
+        contexte=contexte,
+        question=question,
+    )
+
+
+if __name__ == "__main__":
+    systeme, utilisateur = construire_prompt(
+        "DocuRAG",
+        "[doc_1] retours.md\nLes retours sont acceptés sous 30 jours.",
+        "Quel est le délai de retour ?",
+    )
+    print(systeme, utilisateur, sep="\n\n")
