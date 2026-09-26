@@ -1,38 +1,60 @@
+"""Effacement coordonné du cache, de l'index, du registre et des journaux."""
+
+from __future__ import annotations
+
+import hashlib
 import logging
+from dataclasses import asdict, dataclass
 
 logger = logging.getLogger(__name__)
 
 
-def effacer_personne(identifiant: str, registre, index,
-                     cache, journaux) -> dict:
-    """Supprime toute trace d'une personne, index compris.
+@dataclass(frozen=True)
+class BilanEffacement:
+    documents: int
+    passages: int
+    entrees_cache: int
+    journaux_anonymises: bool
+    simulation: bool = False
 
-    L'ordre compte : on purge le cache AVANT l'index. Sinon une
-    requete arrivant entre les deux operations remettrait en
-    cache une reponse construite sur des donnees en cours de
-    suppression.
-    """
-    bilan = {"passages": 0, "entrees_cache": 0, "documents": 0}
 
-    documents = registre.documents_mentionnant(identifiant)
-    bilan["documents"] = len(documents)
+def _reference_audit(identifiant: str) -> str:
+    return hashlib.sha256(identifiant.encode("utf-8")).hexdigest()[:12]
 
-    # 1. Cache : en premier, pour la raison ci-dessus.
-    bilan["entrees_cache"] = cache.purger_si_source_dans(documents)
 
-    # 2. Index vectoriel : suppression des passages concernes.
-    for document in documents:
-        identifiants = registre.passages_de(document)
-        index.supprimer(identifiants)
-        bilan["passages"] += len(identifiants)
+def effacer_personne(
+    identifiant: str,
+    registre,
+    index,
+    cache,
+    journaux,
+    *,
+    simulation: bool = False,
+) -> dict[str, object]:
+    if not identifiant.strip():
+        raise ValueError("identifiant ne peut pas être vide")
 
-    # 3. Registre : on retire les entrees devenues orphelines.
+    documents = list(registre.documents_mentionnant(identifiant))
+    passage_ids = [
+        passage_id
+        for document in documents
+        for passage_id in registre.passages_de(document)
+    ]
+    if simulation:
+        return asdict(
+            BilanEffacement(len(documents), len(passage_ids), 0, False, simulation=True)
+        )
+
+    cache_count = cache.purger_si_source_dans(documents)
+    if passage_ids:
+        index.supprimer(passage_ids)
     registre.oublier(documents)
-
-    # 4. Journaux applicatifs : souvent oublies, et pourtant ils
-    #    contiennent les questions et les reponses, donc parfois
-    #    les donnees elles-memes.
     journaux.anonymiser_occurrences(identifiant)
 
-    logger.info("Effacement %s : %s", identifiant, bilan)
-    return bilan
+    report = BilanEffacement(len(documents), len(passage_ids), cache_count, True)
+    logger.info("Effacement terminé | référence=%s | bilan=%s", _reference_audit(identifiant), report)
+    return asdict(report)
+
+
+if __name__ == "__main__":
+    print("Exemple prêt : injectez le registre, l'index, le cache et les journaux.")

@@ -1,45 +1,58 @@
-from qdrant_client.models import Filter, FieldCondition, MatchAny
+"""Contrôle d'accès appliqué avant le calcul de similarité."""
 
-def retrieve_with_access_control(query: str,
-                                 user_roles: list[str],
-                                 vector_store,
-                                 k: int = 5) -> list:
-    """
-    Retrieval avec filtrage des documents selon les roles utilisateur.
-    Seuls les documents autorises pour les roles de l'utilisateur
-    sont candidats au retrieval.
+from __future__ import annotations
 
-    Args:
-        query : Question de l'utilisateur
-        user_roles : Liste des roles de l'utilisateur
-                     Ex: ["employee", "rh_manager"]
-        vector_store : Base vectorielle (Qdrant)
-        k : Nombre de chunks a recuperer
+from collections.abc import Iterable, Sequence
 
-    Returns:
-        Chunks filtres selon les droits d'acces
-    """
-    # Construction du filtre d'acces
-    # Un chunk est accessible si au moins un des roles autorises
-    # correspond a un des roles de l'utilisateur
-    access_filter = Filter(
-        must=[
-            FieldCondition(
-                key="allowed_roles",
-                match=MatchAny(any=user_roles)
-            )
-        ]
+from qdrant_client.models import FieldCondition, Filter, MatchAny
+
+
+def construire_filtre_acl(user_roles: Sequence[str]) -> Filter:
+    roles = sorted({role.strip() for role in user_roles if role.strip()})
+    if not roles:
+        raise PermissionError("Aucun rôle authentifié : retrieval refusé")
+    return Filter(
+        must=[FieldCondition(key="allowed_roles", match=MatchAny(any=roles))]
     )
 
-    # Le retrieval n'explore que les documents autorises
-    results = vector_store.similarity_search(
+
+def retrieve_with_access_control(
+    query: str,
+    user_roles: Sequence[str],
+    vector_store,
+    *,
+    k: int = 5,
+):
+    """Envoie le filtre ACL à la base, avant de sélectionner les voisins."""
+
+    if k <= 0:
+        raise ValueError("k doit être strictement positif")
+    return vector_store.similarity_search(
         query,
         k=k,
-        filter=access_filter
+        filter=construire_filtre_acl(user_roles),
     )
 
-    return results
 
-# A l'ingestion, chaque chunk doit inclure les roles autorises :
-# chunk.metadata["allowed_roles"] = ["employee", "rh_manager", "direction"]
-# chunk.metadata["confidentiality"] = "confidentiel"
+def filtrer_documents_autorises(
+    documents: Iterable[dict[str, object]],
+    user_roles: Sequence[str],
+) -> list[dict[str, object]]:
+    """Version locale utilisée pour comprendre et tester la règle ACL."""
+
+    roles = {role.strip() for role in user_roles if role.strip()}
+    if not roles:
+        return []
+    return [
+        document
+        for document in documents
+        if roles & set(document.get("allowed_roles", []))
+    ]
+
+
+if __name__ == "__main__":
+    documents = [
+        {"source": "public.md", "allowed_roles": ["employee"]},
+        {"source": "salaires.md", "allowed_roles": ["rh_manager"]},
+    ]
+    print(filtrer_documents_autorises(documents, ["employee"]))

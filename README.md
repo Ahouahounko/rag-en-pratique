@@ -93,7 +93,9 @@ Les exemples RAG acceptent OpenAI, Hugging Face ou Ollama. Configurez
 - [Chapitre 9 — DocuRAG](chapters/chapitre-09-docurag/09_docurag.ipynb) :
   application modulaire et parcours complet ;
 - [Chapitre 10 — Optimisation](chapters/chapitre-10-optimisation/10_optimisation.ipynb) :
-  streaming, cache, compression, routage économique et embeddings par lots.
+  streaming, cache, compression, routage économique et embeddings par lots ;
+- [Chapitre 11 — Sécurité et fiabilité](chapters/chapitre-11-securite/11_securite.ipynb) :
+  injections, ACL, effacement des données et expérimentation A/B fiable.
 
 Ces notebooks proposent un sélecteur OpenAI, Hugging Face ou Ollama. Consultez
 [le guide des fournisseurs](docs/model-providers.md).

@@ -141,6 +141,23 @@ subprocess.run(
 print("Environnement du chapitre 10 prêt :", Path.cwd())
 '''
 
+CHAPTER_11_BOOTSTRAP = f'''import os
+import subprocess
+import sys
+from pathlib import Path
+
+if not Path("src").is_dir():
+    if not Path("rag-en-pratique").is_dir():
+        subprocess.run(["git", "clone", "{REPOSITORY_URL}.git"], check=True)
+    os.chdir("rag-en-pratique")
+
+subprocess.run(
+    [sys.executable, "-m", "pip", "install", "-q", "-e", ".[security]"],
+    check=True,
+)
+print("Environnement du chapitre 11 prêt :", Path.cwd())
+'''
+
 CHAPTER_10_MODELS = '''# @title Activer uniquement les modèles que vous voulez utiliser
 UTILISER_OPENAI = False # @param {type:"boolean"}
 UTILISER_HUGGINGFACE = False # @param {type:"boolean"}
@@ -1100,6 +1117,103 @@ subprocess.run(
     return notebook(cells)
 
 
+def chapter_11() -> dict[str, object]:
+    badge = (
+        "https://colab.research.google.com/github/Ahouahounko/rag-en-pratique/"
+        "blob/main/chapters/chapitre-11-securite/11_securite.ipynb"
+    )
+    examples = ROOT / "chapters/chapitre-11-securite/examples"
+    lessons = [
+        (
+            "01_filtre_injection.py",
+            "Filtrer les injections à l'ingestion",
+            "Normaliser le texte, détecter les marqueurs évidents et mettre en quarantaine.",
+        ),
+        (
+            "02_separation_contexte.txt",
+            "Séparer instructions et données",
+            "Délimiter explicitement les extraits externes et la question utilisateur.",
+        ),
+        (
+            "03_retrieval_acl.py",
+            "Appliquer les ACL avant le retrieval",
+            "Refuser sans rôle et filtrer dans la base avant le calcul des voisins.",
+        ),
+        (
+            "04_droit_effacement.py",
+            "Orchestrer le droit à l'effacement",
+            "Purger cache, index, registre et journaux sans exposer l'identifiant dans les logs.",
+        ),
+        (
+            "05_ab_framework.py",
+            "Fiabiliser une expérience A/B",
+            "Assigner stablement les utilisateurs puis utiliser un test de Welch et un effet minimal.",
+        ),
+        (
+            "06_taille_echantillon.py",
+            "Calculer l'effectif avant le test",
+            "Choisir alpha, puissance et effet minimal avant d'observer les résultats.",
+        ),
+    ]
+    cells = [
+        markdown(
+            f"# Chapitre 11 — Sécuriser et fiabiliser\n\n"
+            f"[![Ouvrir dans Colab](https://colab.research.google.com/assets/colab-badge.svg)]({badge})\n\n"
+            "Ce laboratoire couvre les six extraits du chapitre : injection indirecte, séparation "
+            "instructions/données, ACL, effacement et expérimentation fiable."
+        ),
+        markdown(
+            "## Ressources officielles\n\n"
+            "- [OpenAI Docs — Safety best practices](https://developers.openai.com/api/docs/guides/safety-best-practices)\n"
+            "- [OpenAI Docs — Moderation](https://developers.openai.com/api/docs/guides/moderation)\n"
+            "- [OWASP — Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)\n"
+            "- [CNIL — droit à l'effacement](https://www.cnil.fr/fr/le-droit-leffacement-supprimer-vos-donnees-en-ligne)"
+        ),
+        markdown(
+            "## Important\n\n"
+            "Un filtre par expressions régulières ne suffit jamais à lui seul. La défense combine "
+            "contrôle d'accès avant retrieval, séparation des données, limitation des outils, "
+            "journalisation prudente, évaluation et revue humaine."
+        ),
+        markdown("## 0. Préparer Colab ou Jupyter"),
+        code(CHAPTER_11_BOOTSTRAP),
+    ]
+    for index, (filename, title, explanation) in enumerate(lessons, start=1):
+        source = (examples / filename).read_text(encoding="utf-8")
+        cells.append(
+            markdown(
+                f"## {index}. {title}\n\n{explanation}\n\n"
+                f"Fichier correspondant : [`{filename}`](examples/{filename})"
+            )
+        )
+        if filename.endswith(".txt"):
+            cells.append(markdown(f"```python\n{source}\n```"))
+        else:
+            cells.append(code("# ruff: noqa: F811\n" + source))
+    cells.extend(
+        [
+            markdown("## Exécuter les démonstrations locales"),
+            code(
+                '''import subprocess
+import sys
+
+subprocess.run(
+    [sys.executable, "chapters/chapitre-11-securite/runnable/run_chapter.py"],
+    check=True,
+)
+'''
+            ),
+            markdown(
+                "## Bilan\n\n"
+                "La sécurité d'un RAG ne repose pas sur le prompt seul. Elle commence par "
+                "l'identité et les autorisations, continue par l'ingestion et le retrieval, "
+                "et se vérifie par des tests adversariaux et des procédures d'effacement auditables."
+            ),
+        ]
+    )
+    return notebook(cells)
+
+
 def write(path: Path, payload: dict[str, object]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(path.relative_to(ROOT))
@@ -1127,6 +1241,7 @@ def main() -> None:
     write(ROOT / "chapters/chapitre-08-observabilite/08_observabilite.ipynb", chapter_8())
     write(ROOT / "chapters/chapitre-09-docurag/09_docurag.ipynb", chapter_9())
     write(ROOT / "chapters/chapitre-10-optimisation/10_optimisation.ipynb", chapter_10())
+    write(ROOT / "chapters/chapitre-11-securite/11_securite.ipynb", chapter_11())
 
 
 if __name__ == "__main__":
