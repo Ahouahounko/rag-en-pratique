@@ -126,6 +126,7 @@ def test_notebooks_are_clean_colab_notebooks() -> None:
         ROOT / "chapters/chapitre-09-docurag/09_docurag.ipynb",
         ROOT / "chapters/chapitre-10-optimisation/10_optimisation.ipynb",
         ROOT / "chapters/chapitre-11-securite/11_securite.ipynb",
+        ROOT / "chapters/chapitre-12-bonnes-pratiques/12_bonnes_pratiques.ipynb",
     ]
     for path in paths:
         payload = json.loads(path.read_text(encoding="utf-8"))

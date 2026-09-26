@@ -41,5 +41,7 @@ jobs:
           chapters/chapitre-10-optimisation/runnable
           chapters/chapitre-11-securite/examples
           chapters/chapitre-11-securite/runnable
+          chapters/chapitre-12-bonnes-pratiques/examples
+          chapters/chapitre-12-bonnes-pratiques/runnable
       - name: Exécuter les tests
         run: pytest

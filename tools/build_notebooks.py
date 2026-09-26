@@ -158,6 +158,20 @@ subprocess.run(
 print("Environnement du chapitre 11 prêt :", Path.cwd())
 '''
 
+CHAPTER_12_BOOTSTRAP = f'''import os
+import subprocess
+import sys
+from pathlib import Path
+
+if not Path("src").is_dir():
+    if not Path("rag-en-pratique").is_dir():
+        subprocess.run(["git", "clone", "{REPOSITORY_URL}.git"], check=True)
+    os.chdir("rag-en-pratique")
+
+subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", "."], check=True)
+print("Environnement du chapitre 12 prêt :", Path.cwd())
+'''
+
 CHAPTER_10_MODELS = '''# @title Activer uniquement les modèles que vous voulez utiliser
 UTILISER_OPENAI = False # @param {type:"boolean"}
 UTILISER_HUGGINGFACE = False # @param {type:"boolean"}
@@ -1214,6 +1228,100 @@ subprocess.run(
     return notebook(cells)
 
 
+def chapter_12() -> dict[str, object]:
+    badge = (
+        "https://colab.research.google.com/github/Ahouahounko/rag-en-pratique/"
+        "blob/main/chapters/chapitre-12-bonnes-pratiques/12_bonnes_pratiques.ipynb"
+    )
+    examples = ROOT / "chapters/chapitre-12-bonnes-pratiques/examples"
+    lessons = [
+        (
+            "01_nettoyage.py",
+            "Nettoyer avant de chunker",
+            "Normaliser le bruit technique sans altérer le contenu métier.",
+        ),
+        (
+            "02_test_decoupage.py",
+            "Tester le chunking sur de vraies questions",
+            "Mesurer réponses complètes, partielles et manquantes pour chaque configuration.",
+        ),
+        (
+            "03_balayage_k.py",
+            "Balayer k",
+            "Mesurer le rappel puis choisir le coude au lieu d'utiliser une valeur habituelle.",
+        ),
+        (
+            "04_prompt_robuste.txt",
+            "Utiliser un prompt robuste",
+            "Combiner ancrage, refus, citations, couverture partielle et séparation des données.",
+        ),
+        (
+            "05_journalisation.py",
+            "Journaliser avec minimisation des données",
+            "Conserver traces, scores et latences sans stocker les contenus sensibles par défaut.",
+        ),
+        (
+            "06_audit.py",
+            "Automatiser l'auto-audit",
+            "Détecter les anti-patterns vérifiables sans modèle ni jeu de référence.",
+        ),
+    ]
+    cells = [
+        markdown(
+            f"# Chapitre 12 — Les bonnes pratiques qui font la différence\n\n"
+            f"[![Ouvrir dans Colab](https://colab.research.google.com/assets/colab-badge.svg)]({badge})\n\n"
+            "Ce notebook transforme les six extraits du chapitre en outils réutilisables pour "
+            "la qualité des données, le chunking, le retrieval, les prompts et l'exploitation."
+        ),
+        markdown(
+            "## Ressources utiles\n\n"
+            "- [OpenAI Docs — production best practices](https://developers.openai.com/api/docs/guides/production-best-practices)\n"
+            "- [OpenAI Docs — evals](https://developers.openai.com/api/docs/guides/evals)\n"
+            "- [OpenAI Docs — rate limits](https://developers.openai.com/api/docs/guides/rate-limits)"
+        ),
+        markdown(
+            "## Fil conducteur\n\n"
+            "Commencez simple, mesurez une ligne de base, modifiez une seule variable, puis "
+            "conservez uniquement les changements qui améliorent la qualité sans dégrader sécurité, coût ou latence."
+        ),
+        markdown("## 0. Préparer Colab ou Jupyter"),
+        code(CHAPTER_12_BOOTSTRAP),
+    ]
+    for index, (filename, title, explanation) in enumerate(lessons, start=1):
+        source = (examples / filename).read_text(encoding="utf-8")
+        cells.append(
+            markdown(
+                f"## {index}. {title}\n\n{explanation}\n\n"
+                f"Fichier correspondant : [`{filename}`](examples/{filename})"
+            )
+        )
+        if filename.endswith(".txt"):
+            cells.append(markdown(f"```python\n{source}\n```"))
+        else:
+            cells.append(code("# ruff: noqa: F811\n" + source))
+    cells.extend(
+        [
+            markdown("## Exécuter les démonstrations locales"),
+            code(
+                '''import subprocess
+import sys
+
+subprocess.run(
+    [sys.executable, "chapters/chapitre-12-bonnes-pratiques/runnable/run_chapter.py"],
+    check=True,
+)
+'''
+            ),
+            markdown(
+                "## Bilan\n\n"
+                "Un RAG durable repose sur une boucle courte : données propres, configuration mesurée, "
+                "jeu de référence versionné, changement isolé, évaluation, observation et possibilité de retour arrière."
+            ),
+        ]
+    )
+    return notebook(cells)
+
+
 def write(path: Path, payload: dict[str, object]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(path.relative_to(ROOT))
@@ -1242,6 +1350,10 @@ def main() -> None:
     write(ROOT / "chapters/chapitre-09-docurag/09_docurag.ipynb", chapter_9())
     write(ROOT / "chapters/chapitre-10-optimisation/10_optimisation.ipynb", chapter_10())
     write(ROOT / "chapters/chapitre-11-securite/11_securite.ipynb", chapter_11())
+    write(
+        ROOT / "chapters/chapitre-12-bonnes-pratiques/12_bonnes_pratiques.ipynb",
+        chapter_12(),
+    )
 
 
 if __name__ == "__main__":

@@ -1,20 +1,23 @@
 # Exemples du chapitre 12
 
-Les fichiers de ce dossier sont extraits automatiquement du manuscrit. 
-Le contenu est conservé tel quel afin de permettre sa revue avant transformation 
-en exemple autonome ou en notebook exécutable.
+Les six extraits ont été rendus autonomes, injectables et testables sans réseau.
 
-| # | Label LaTeX | Légende | Type | Fichier | Validation |
-|---:|---|---|---|---|---|
-| 01 | `lst:nettoyage` | Fonction de nettoyage de base avant chunking | python | [`01_nettoyage.py`](01_nettoyage.py) | syntaxe validée |
-| 02 | `lst:test_decoupage` | Harnais de test du découpage sur de vraies questions | python | [`02_test_decoupage.py`](02_test_decoupage.py) | syntaxe validée |
-| 03 | `lst:balayage_k` | Balayage de $k$ sur le jeu de référence | python | [`03_balayage_k.py`](03_balayage_k.py) | syntaxe validée |
-| 04 | `lst:prompt_robuste` | Prompt système comportant les trois clauses | text | [`04_prompt_robuste.txt`](04_prompt_robuste.txt) | à valider |
-| 05 | `lst:journalisation` | Journalisation structurée d'une requête complète | python | [`05_journalisation.py`](05_journalisation.py) | syntaxe validée |
-| 06 | `lst:audit` | Script d'auto-audit contre les anti-patterns vérifiables à froid | python | [`06_audit.py`](06_audit.py) | syntaxe validée |
+| # | Sujet | Fichier | Résultat |
+|---:|---|---|---|
+| 01 | Nettoyage | [`01_nettoyage.py`](01_nettoyage.py) | Normalisation conservatrice avant chunking |
+| 02 | Test du découpage | [`02_test_decoupage.py`](02_test_decoupage.py) | Comparaison complète/partielle/manquante |
+| 03 | Balayage de `k` | [`03_balayage_k.py`](03_balayage_k.py) | Rappel moyen et suggestion du coude |
+| 04 | Prompt robuste | [`04_prompt_robuste.txt`](04_prompt_robuste.txt) | Ancrage, refus, citations et délimitation |
+| 05 | Journalisation | [`05_journalisation.py`](05_journalisation.py) | Traces structurées avec contenus masqués par défaut |
+| 06 | Auto-audit | [`06_audit.py`](06_audit.py) | Constats stables par code et sévérité |
 
-## Convention de validation
+## Journalisation responsable
 
-- **syntaxe validée** : le fichier Python passe l'analyse syntaxique ;
-- **extrait pédagogique** : le bloc est partiel, contient des ellipses ou demande un contexte ;
-- **à valider** : commande, configuration, prompt ou autre contenu à tester manuellement.
+L'exemple 05 exige une clé HMAC distincte via `RAG_LOG_HMAC_KEY` ou le paramètre
+`secret`. Par défaut, il ne conserve que l'empreinte et la longueur des questions
+et réponses. Activez `journaliser_contenu=True` uniquement après une décision
+explicite concernant la confidentialité, la rétention et les droits d'accès.
+
+Le notebook [`../12_bonnes_pratiques.ipynb`](../12_bonnes_pratiques.ipynb)
+reprend chaque exemple et le dossier [`../runnable`](../runnable/) fournit le
+runner local.

@@ -1,45 +1,57 @@
-def tester_decoupages(documents: list, questions: list[dict],
-                      configurations: list[dict],
-                      encodeur) -> list[dict]:
-    """Compare plusieurs configurations de decoupage.
+"""Harnais de comparaison des configurations de chunking."""
 
-    questions : [{"texte": "...", "reponse_attendue": "..."}]
-                La reponse attendue sert de sonde : on verifie
-                qu'elle est CONTENUE dans un chunk recupere.
-    configurations : [{"taille": 256, "recouvrement": 0}, ...]
-    """
-    resultats = []
+from __future__ import annotations
 
+from collections.abc import Callable, Sequence
+
+
+def _texte(chunk: object) -> str:
+    return str(getattr(chunk, "texte", getattr(chunk, "text", chunk)))
+
+
+def tester_decoupages(
+    documents: Sequence[object],
+    questions: Sequence[dict[str, str]],
+    configurations: Sequence[dict[str, int]],
+    *,
+    decouper: Callable[..., list[object]],
+    indexer: Callable[[list[object]], object],
+    k: int = 5,
+) -> list[dict[str, float | int]]:
+    if not questions or not configurations:
+        raise ValueError("questions et configurations ne peuvent pas être vides")
+    if k <= 0:
+        raise ValueError("k doit être strictement positif")
+
+    results = []
     for config in configurations:
         chunks = decouper(documents, **config)
-        index = indexer_en_memoire(chunks, encodeur)
-
-        complets, partiels, manques = 0, 0, 0
-
-        for question in questions:
-            recuperes = index.chercher(question["texte"], k=5)
-            attendu = question["reponse_attendue"].lower()
-
-            # La reponse tient-elle ENTIERE dans un seul chunk ?
-            if any(attendu in c.texte.lower() for c in recuperes):
-                complets += 1
-            # Sinon, est-elle eclatee sur plusieurs chunks
-            # recuperes ? C'est le cas ambigu : le modele PEUT
-            # recoller, mais il n'y arrive pas toujours.
-            elif attendu in " ".join(c.texte.lower() for c in recuperes):
-                partiels += 1
+        index = indexer(chunks)
+        complete = partial = missing = 0
+        for case in questions:
+            expected = case["reponse_attendue"].casefold().strip()
+            if not expected:
+                raise ValueError("Chaque réponse attendue doit être non vide")
+            retrieved = index.chercher(case["texte"], k=k)
+            texts = [_texte(chunk).casefold() for chunk in retrieved]
+            if any(expected in text for text in texts):
+                complete += 1
+            elif expected in " ".join(texts):
+                partial += 1
             else:
-                manques += 1
+                missing += 1
+        total = len(questions)
+        results.append(
+            {
+                **config,
+                "complet": complete / total,
+                "partiel": partial / total,
+                "manque": missing / total,
+                "nb_chunks": len(chunks),
+            }
+        )
+    return sorted(results, key=lambda result: (-result["complet"], result["nb_chunks"]))
 
-        resultats.append({
-            **config,
-            "complet": complets / len(questions),
-            "partiel": partiels / len(questions),
-            "manque": manques / len(questions),
-            "nb_chunks": len(chunks),
-        })
 
-    # On trie sur le taux COMPLET, pas sur complet + partiel :
-    # une reponse eclatee sur trois chunks est un pari, pas un
-    # succes.
-    return sorted(resultats, key=lambda r: r["complet"], reverse=True)
+if __name__ == "__main__":
+    print("Exemple prêt : injectez vos fonctions decouper() et indexer().")

@@ -95,7 +95,9 @@ Les exemples RAG acceptent OpenAI, Hugging Face ou Ollama. Configurez
 - [Chapitre 10 — Optimisation](chapters/chapitre-10-optimisation/10_optimisation.ipynb) :
   streaming, cache, compression, routage économique et embeddings par lots ;
 - [Chapitre 11 — Sécurité et fiabilité](chapters/chapitre-11-securite/11_securite.ipynb) :
-  injections, ACL, effacement des données et expérimentation A/B fiable.
+  injections, ACL, effacement des données et expérimentation A/B fiable ;
+- [Chapitre 12 — Bonnes pratiques](chapters/chapitre-12-bonnes-pratiques/12_bonnes_pratiques.ipynb) :
+  nettoyage, tests de chunking, réglage de `k`, journalisation et auto-audit.
 
 Ces notebooks proposent un sélecteur OpenAI, Hugging Face ou Ollama. Consultez
 [le guide des fournisseurs](docs/model-providers.md).

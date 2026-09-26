@@ -1,42 +1,59 @@
-def balayer_k(questions: list[dict], retriever,
-             valeurs_k: list[int] = None) -> list[dict]:
-    """Mesure le rappel du contexte pour plusieurs valeurs de k.
+"""Balayage de k et détection simple du coude de rappel."""
 
-    questions : [{"texte": "...", "passages_attendus": {"id1", ...}}]
-    Retourne une liste triee par k croissant, prete a tracer.
-    """
-    if valeurs_k is None:
-        valeurs_k = [1, 3, 5, 10, 15, 20]
+from __future__ import annotations
 
-    resultats = []
-
-    for k in valeurs_k:
-        rappels = []
-
-        for question in questions:
-            recuperes = retriever.chercher(question["texte"], k=k)
-            ids_recuperes = {p.id for p in recuperes}
-            attendus = question["passages_attendus"]
-
-            # Rappel pour CETTE question : part des passages
-            # attendus qui figurent bien parmi les k recuperes.
-            trouves = ids_recuperes & attendus
-            rappels.append(len(trouves) / len(attendus))
-
-        rappel_moyen = sum(rappels) / len(rappels)
-        resultats.append({"k": k, "rappel": round(rappel_moyen, 3)})
-
-    return resultats
+from collections.abc import Sequence
+from itertools import pairwise
 
 
-# Lecture du resultat : chercher le "coude" de la courbe, le
-# point ou ajouter un candidat de plus n'ameliore quasiment plus
-# le rappel. C'est ce point, pas un k choisi par habitude, qui
-# doit fixer votre configuration de depart.
-#
-# k= 1 : rappel 0.412
-# k= 3 : rappel 0.681
-# k= 5 : rappel 0.774   <- le coude est ici
-# k=10 : rappel 0.809
-# k=15 : rappel 0.818
-# k=20 : rappel 0.821
+def balayer_k(
+    questions: Sequence[dict[str, object]],
+    retriever,
+    valeurs_k: Sequence[int] = (1, 3, 5, 10, 15, 20),
+) -> list[dict[str, float | int]]:
+    if not questions:
+        raise ValueError("questions ne peut pas être vide")
+    values = sorted(set(valeurs_k))
+    if not values or any(k <= 0 for k in values):
+        raise ValueError("Les valeurs de k doivent être strictement positives")
+
+    results = []
+    for k in values:
+        recalls = []
+        for case in questions:
+            expected = set(case["passages_attendus"])
+            if not expected:
+                raise ValueError("passages_attendus ne peut pas être vide")
+            retrieved = retriever.chercher(str(case["texte"]), k=k)
+            retrieved_ids = {passage.id for passage in retrieved}
+            recalls.append(len(retrieved_ids & expected) / len(expected))
+        results.append({"k": k, "rappel": round(sum(recalls) / len(recalls), 3)})
+    return results
+
+
+def choisir_coude(
+    resultats: Sequence[dict[str, float | int]],
+    *,
+    gain_minimal: float = 0.02,
+) -> int:
+    """Retourne le premier k dont le gain suivant devient faible."""
+
+    if not resultats:
+        raise ValueError("resultats ne peut pas être vide")
+    if gain_minimal < 0:
+        raise ValueError("gain_minimal ne peut pas être négatif")
+    for current, following in pairwise(resultats):
+        gain = float(following["rappel"]) - float(current["rappel"])
+        if gain < gain_minimal:
+            return int(current["k"])
+    return int(resultats[-1]["k"])
+
+
+if __name__ == "__main__":
+    sample = [
+        {"k": 1, "rappel": 0.41},
+        {"k": 3, "rappel": 0.68},
+        {"k": 5, "rappel": 0.77},
+        {"k": 10, "rappel": 0.78},
+    ]
+    print("Coude suggéré : k =", choisir_coude(sample, gain_minimal=0.02))
